@@ -26,3 +26,5 @@ for frame in range(scene.frame_start, scene.frame_start + 1):
 ray install-nightly
 python -m pip install -U --no-cache-dir "ray[rllib,tune,ml]"
 
+tensorboard --logdir ~/ray_results/ 
+ssh ascardigli@gate03.aime.info -p 21109 -L *:16006:ascardigli@gate03.aime.info:6006     
