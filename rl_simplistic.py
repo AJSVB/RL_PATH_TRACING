@@ -107,7 +107,7 @@ from ray import serve
 def train_ppo_model():
                      
     algo = ppo.PPO(env=CustomEnv,config={
-'env_config':{'path': "RL_PATH_TRACING/barcelona/",'number_images':100,'frame_number':1, 'spp':1
+'env_config':{'path': "/scratch/dataset/Antoine/barcelona/",'number_images':100,'frame_number':1, 'spp':1
             },
           'framework' :"torch",
         'num_workers':0,
