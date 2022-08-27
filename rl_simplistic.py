@@ -7,7 +7,7 @@ from PIL import Image
 import torchvision.transforms.functional as TF
 import time
 import torchvision.transforms as T
-
+import random
 
 
 def get_ith_image(path,i,frame_number = 1):
@@ -85,7 +85,7 @@ class CustomEnv(gym.Env):
     # Execute one time step within the environment
     self.simulation.simulate(*action)
     observation = self.simulation.render()
-    reward = np.sum((observation - self.truth)**2)
+    reward = -np.sum((observation - self.truth)**2)
     self.count+=1
     done = self.WIDTH*self.HEIGHT*self.spp == self.count
     if random.random() < .01:
@@ -107,7 +107,7 @@ from ray import serve
 def train_ppo_model():
                      
     algo = ppo.PPO(env=CustomEnv,config={
-'env_config':{'path': "/scratch/dataset/Antoine/barcelona/",'number_images':100,'frame_number':1, 'spp':1
+'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':100,'frame_number':1, 'spp':1
             },
           'framework' :"torch",
         'num_workers':0,
