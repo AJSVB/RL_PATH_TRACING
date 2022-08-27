@@ -1,0 +1,28 @@
+ssh ascardigli@gate03.aime.info -p 21109
+
+
+blender myscene.blend --background --python myscript.py
+
+
+import bpy
+import time
+from random import randint
+
+
+scene = bpy.context.scene
+for frame in range(scene.frame_start, scene.frame_start + 1):
+  for i in range(10000):
+    bpy.context.scene.cycles.seed = randint(-(0xfffffff-1), 0xfffffff)
+    bpy.context.scene.cycles.samples = 1
+    bpy.context.scene.render.image_settings.color_mode ='RGB'
+    bpy.context.scene.render.image_settings.file_format='PNG'
+    bpy.context.scene.render.filepath = "~"
+    bpy.context.scene.render.engine = 'CYCLES'    
+    scene.render.filepath = '~/' + str(frame).zfill(4) + "-" + str(i).zfill(5) 
+    scene.frame_set(frame)
+    bpy.ops.render.render(write_still=True)
+  
+
+ray install-nightly
+python -m pip install -U --no-cache-dir "ray[rllib,tune,ml]"
+
