@@ -1,4 +1,5 @@
 import torch
+import math
 import torchvision
 import torchvision.transforms as transforms
 import torch.nn.functional as F
@@ -36,11 +37,21 @@ class PhysicSimulation:
         return self.max * self.ground_truth.shape[0] * self.ground_truth.shape[1]
 
     def simulate(self, x,y):
-        i = self.indexes[x,y]
-        self.indexes[x,y] =i+1
-        out = self.dataset[x,y,:,i%self.max]
-        self.observations[x,y,:] = (self.observations[x,y,:] * i +  out )/(i+1)
-        self.variance[x,y,:] = (self.variance[x,y,:]*i + out**2 )/(i+1)
+        x=x+4
+        y=y+4
+        i = self.indexes[x-4:x+4,y-4:y+4]
+        self.indexes[x-4:x+4,y-4:y+4] =i+1
+        i=i.repeat(3,1,1).permute(1,2,0)
+        temp = self.dataset[x-4:x+4,y-4:y+4,:,:]
+        inde = (i%self.max).long().unsqueeze(-1)
+        print(i)
+        print(temp)
+        out = temp.gather(-1,inde).squeeze(-1)
+        print(out)
+
+        #print(torch.index_select(self.dataset[x-4:x+4,y-4:y+4,:,:], -1 ,(i%self.max).long() ).shape())
+        self.observations[x-4:x+4,y-4:y+4,:] = (self.observations[x-4:x+4,y-4:y+4,:] * i +  out )/(i+1)
+        self.variance[x-4:x+4,y-4:y+4,:] = (self.variance[x-4:x+4,y-4:y+4,:]*i + out**2 )/(i+1)
         #if i >= self.max:
         #    print("warning: number of precomputed samples is not big enough, information is redondant") 
        # return out
@@ -84,19 +95,19 @@ class CustomEnv(gym.Env):
     self.WIDTH = self.simulation.WIDTH
     self.HEIGHT = self.simulation.HEIGHT
 
-    self.action_space = spaces.MultiDiscrete([self.HEIGHT,self.WIDTH])
+    self.action_space = spaces.MultiDiscrete([self.HEIGHT-8,self.WIDTH-8])
     self.observation_space = spaces.Box(low=-1e-8, high=1, shape=
                     (self.HEIGHT,self.WIDTH,7), dtype=np.float32) #MACHINE PRECISION
     self.count = 0
-    self.spec = Spec(self.WIDTH*self.HEIGHT*self.spp)
+    self.spec = Spec(math.ceil(self.WIDTH*self.HEIGHT*self.spp/64))
     
   def step(self, action):
     # Execute one time step within the environment
     self.simulation.simulate(*action)
     observation = self.simulation.observe()
     reward = - np.sum((observation[:,:,:3] - self.truth)**2)
-    self.count+=1
-    done = self.spec.max_episode_steps == self.count
+    self.count+=64
+    done = self.spec.max_episode_steps >= self.count
     if not self.count%100:
         print(reward)
     return observation,reward,done, {}
@@ -121,7 +132,7 @@ from ray import serve
 def train_ppo_model():
                      
     algo = ppo.PPO(env=CustomEnv,config={
-'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':100,'frame_number':1, 'spp':3
+'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':2,'frame_number':1, 'spp':3
             },
           'framework' :"torch",
         'num_workers':4,
@@ -130,9 +141,9 @@ def train_ppo_model():
     })
     
     # Train for one iteration.
-    for _ in range(10):
+    for _ in range(1):
          print(algo.train())
-    print(algo.evaluate())
+#    print(algo.evaluate())
     # Save state of the trained Algorithm in a checkpoint.
     algo.save("/tmp/rllib_checkpoint")
     return "/tmp/rllib_checkpoint/checkpoint_000001/checkpoint-1"
