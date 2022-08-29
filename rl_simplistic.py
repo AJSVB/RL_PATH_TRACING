@@ -1,3 +1,6 @@
+
+
+
 import torch
 import math
 import torchvision
@@ -10,6 +13,9 @@ import time
 import torchvision.transforms as T
 import random
 
+
+def stride(number,strid):
+   return math.floor(number/strid)
 
 def get_ith_image(path,i,frame_number = 1):
     image = Image.open(path+str(frame_number).zfill(4) + "-" + str(i).zfill(5)+'.png')
@@ -24,7 +30,8 @@ def aggregate_by_pixel(path,number_images,frame_number = 1):
 
 
 class PhysicSimulation:
-    def __init__(self,path,number_images,frame_number=1, batch_rad = 8):
+    def __init__(self,path,number_images,frame_number=1, batch_rad = 8, strid =1):
+        self.stride = strid
         self.dataset=aggregate_by_pixel(path,number_images,frame_number)[-84:,-84:,:,:]
         self.ground_truth = self.dataset.mean(dim = 3)
         self.max = number_images
@@ -38,8 +45,8 @@ class PhysicSimulation:
         return self.max * self.ground_truth.shape[0] * self.ground_truth.shape[1]
 
     def simulate(self, x,y):
-        x=x+self.batch_ray_rad
-        y=y+self.batch_ray_rad
+        x=x*self.stride+self.batch_ray_rad
+        y=y*self.stride+self.batch_ray_rad
         i = self.indexes[x-self.batch_ray_rad:x+self.batch_ray_rad,y-self.batch_ray_rad:y+self.batch_ray_rad]
         self.indexes[x-self.batch_ray_rad:x+self.batch_ray_rad,y-self.batch_ray_rad:y+self.batch_ray_rad] =i+1
         i=i.repeat(3,1,1).permute(1,2,0)
@@ -84,12 +91,14 @@ class CustomEnv(gym.Env):
     self.frame_number = env_config["frame_number"]
     self.spp = env_config['spp']
     self.batch_rad = env_config["batch_rad"]
-    self.simulation = PhysicSimulation(self.path,self.number_images,self.frame_number,self.batch_rad)
+    self.stride = env_config["stride"]
+    self.simulation = PhysicSimulation(self.path,self.number_images,self.frame_number,self.batch_rad,self.stride)
     self.truth = self.simulation.truth()
     self.WIDTH = self.simulation.WIDTH
     self.HEIGHT = self.simulation.HEIGHT
 
-    self.action_space = spaces.MultiDiscrete([self.HEIGHT-2*self.batch_rad,self.WIDTH-2*self.batch_rad])
+
+    self.action_space = spaces.MultiDiscrete([stride(self.HEIGHT-2*self.batch_rad,self.stride),stride(self.WIDTH-2*self.batch_rad,self.stride)])
     self.observation_space = spaces.Box(low=-1e-8, high=1, shape=
                     (self.HEIGHT,self.WIDTH,7), dtype=np.float32) #MACHINE PRECISION
     self.count = 0
@@ -105,6 +114,9 @@ class CustomEnv(gym.Env):
     done = self.spec.max_episode_steps <= self.count
     #print(reward)
     #self.total = self.total + reward
+    #print(np.max(observation))
+    #print(np.min(observation))
+    #print(observation.shape)
     return observation,reward,done, {}
 
     
@@ -130,21 +142,21 @@ from ray import serve
 def train_ppo_model():
                      
     algo = ppo.PPO(env=CustomEnv,config={
-'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':20,\
-'frame_number':1, 'spp':4, "batch_rad":8
+'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':111,\
+'frame_number':1, 'spp':4, "batch_rad":8, "stride":8
             },
           'framework' :"torch",
         'num_workers':2,
-#'num_gpus_per_worker':1,
+'num_gpus_per_worker':1,
 "evaluation_interval":1,
 #"rollout_fragment_length":111,
-#"train_batch_size":200,
+"train_batch_size":400,
 #"batch_mode":"complete_episodes"
    #     'conv_filters':[out_channels, kernel, stride]
     })
     
     # Train for one iteration.
-    for _ in range(10):
+    for _ in range(100):
          print(algo.train())
     # Save state of the trained Algorithm in a checkpoint.
     algo.save("/tmp/rllib_checkpoint")
