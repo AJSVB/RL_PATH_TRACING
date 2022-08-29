@@ -79,7 +79,6 @@ class CustomEnv(gym.Env):
   metadata = {'render.modes': ['human']}
   def __init__(self, env_config):
     super(CustomEnv, self).__init__()
-    print(env_config)
     self.path = env_config["path"]
     self.number_images = env_config["number_images"]
     self.frame_number = env_config["frame_number"]
@@ -95,23 +94,24 @@ class CustomEnv(gym.Env):
                     (self.HEIGHT,self.WIDTH,7), dtype=np.float32) #MACHINE PRECISION
     self.count = 0
     self.spec = Spec(math.ceil(self.WIDTH*self.HEIGHT*self.spp/((2*self.batch_rad)**2)))
-    
-  def step(self, action):
-    # Execute one time step within the environment
-    old = self.simulation.render()
+    self.total=0    
 
+  def step(self, action):
+    old = np.sum((self.simulation.render() - self.truth)**2)
     self.simulation.simulate(*action)
     observation = self.simulation.observe()
-    reward = np.sum((old - self.truth)**2) - np.sum((observation[:,:,:3] - self.truth)**2)
-    self.count+=(2*self.batch_rad)**2
-    done = self.spec.max_episode_steps >= self.count
-    if not self.count%100:
-        
-        print(reward)
+    reward = (old - np.sum((observation[:,:,:3] - self.truth)**2))
+    self.count+=1
+    done = self.spec.max_episode_steps <= self.count
+    #print(reward)
+    #self.total = self.total + reward
     return observation,reward,done, {}
+
     
   def reset(self):
     # Reset the state of the environment to an initial state
+    self.count =0
+    self.total = 0
     self.simulation = PhysicSimulation(self.path,self.number_images,self.frame_number)
     return self.simulation.observe()
     
@@ -134,14 +134,17 @@ def train_ppo_model():
 'frame_number':1, 'spp':4, "batch_rad":8
             },
           'framework' :"torch",
-        'num_workers':4,
-'num_gpus_per_worker':1,
-"evaluation_interval":10
+        'num_workers':2,
+#'num_gpus_per_worker':1,
+"evaluation_interval":1,
+#"rollout_fragment_length":111,
+#"train_batch_size":200,
+#"batch_mode":"complete_episodes"
    #     'conv_filters':[out_channels, kernel, stride]
     })
     
     # Train for one iteration.
-    for _ in range(100):
+    for _ in range(10):
          print(algo.train())
     # Save state of the trained Algorithm in a checkpoint.
     algo.save("/tmp/rllib_checkpoint")
