@@ -32,7 +32,7 @@ def aggregate_by_pixel(path,number_images,frame_number = 1):
 class PhysicSimulation:
     def __init__(self,path,number_images,frame_number=1, batch_rad = 8, strid =1):
         self.stride = strid
-        self.dataset=aggregate_by_pixel(path,number_images,frame_number)[-84:,-84:,:,:]
+        self.dataset=aggregate_by_pixel(path,number_images,frame_number)[-10:,-10:,:,:]
         self.ground_truth = self.dataset.mean(dim = 3)
         self.max = number_images
         self.HEIGHT = self.ground_truth.shape[0]
@@ -97,12 +97,14 @@ class CustomEnv(gym.Env):
     self.WIDTH = self.simulation.WIDTH
     self.HEIGHT = self.simulation.HEIGHT
 
+    self.maxW=stride(self.WIDTH-2*self.batch_rad+self.stride,self.stride)
+    self.maxH=stride(self.HEIGHT-2*self.batch_rad+self.stride,self.stride)
 
-    self.action_space = spaces.MultiDiscrete([stride(self.HEIGHT-2*self.batch_rad,self.stride),stride(self.WIDTH-2*self.batch_rad,self.stride)])
+    self.action_space = spaces.MultiDiscrete([self.maxH,self.maxW])
     self.observation_space = spaces.Box(low=-1e-8, high=1, shape=
                     (self.HEIGHT,self.WIDTH,7), dtype=np.float32) #MACHINE PRECISION
     self.count = 0
-    self.spec = Spec(math.ceil(self.WIDTH*self.HEIGHT*self.spp/((2*self.batch_rad)**2)))
+    self.spec = Spec(math.ceil(self.WIDTH*self.HEIGHT*self.spp/((2*self.batch_rad+1)**2)))
     self.total=0    
 
   def step(self, action):
@@ -124,6 +126,7 @@ class CustomEnv(gym.Env):
     # Reset the state of the environment to an initial state
     self.count =0
     self.total = 0
+    print(self.simulation.observe()[:,:,3])
     self.simulation = PhysicSimulation(self.path,self.number_images,self.frame_number)
     return self.simulation.observe()
     
@@ -142,8 +145,8 @@ from ray import serve
 def train_ppo_model():
                      
     algo = ppo.PPO(env=CustomEnv,config={
-'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':111,\
-'frame_number':1, 'spp':4, "batch_rad":8, "stride":8
+'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':16,\
+'frame_number':1, 'spp':4, "batch_rad":2, "stride":2
             },
           'framework' :"torch",
         'num_workers':2,
@@ -156,7 +159,7 @@ def train_ppo_model():
     })
     
     # Train for one iteration.
-    for _ in range(100):
+    for _ in range(10):
          print(algo.train())
     # Save state of the trained Algorithm in a checkpoint.
     algo.save("/tmp/rllib_checkpoint")
