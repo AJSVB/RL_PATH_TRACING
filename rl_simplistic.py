@@ -145,20 +145,22 @@ def train_ppo_model():
 'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':16,\
 'frame_number':1, 'spp':4, "batch_rad":2, "stride":5
             },
-          'framework' :"torch",
-        'num_workers':1,
-"evaluation_num_workers":1,
-'num_gpus_per_worker':1,
-"evaluation_interval":1,
+          'framework' :"tf2",
+"eager_tracing":True
+
+
+        'num_workers':24,
+#"evaluation_num_workers":1,
+'num_gpus_per_worker':.166,
+"evaluation_interval":10,
 #"rollout_fragment_length":111,
-"train_batch_size":20,
-"sgd_minibatch_size":20
+"train_batch_size":240,
+"sgd_minibatch_size":240
 #"batch_mode":"complete_episodes"
    #     'conv_filters':[out_channels, kernel, stride]
     })
-    print(algo.evaluate())
     # Train for one iteration.
-    for _ in range(10):
+    for _ in range(1000):
          print(algo.train())
     # Save state of the trained Algorithm in a checkpoint.
     algo.save("/tmp/rllib_checkpoint")
