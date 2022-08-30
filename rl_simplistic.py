@@ -15,7 +15,7 @@ import random
 
 
 def stride(number,strid):
-   return math.floor(number/strid)
+   return math.floor(number/strid) +1
 
 def get_ith_image(path,i,frame_number = 1):
     image = Image.open(path+str(frame_number).zfill(4) + "-" + str(i).zfill(5)+'.png')
@@ -47,15 +47,15 @@ class PhysicSimulation:
     def simulate(self, x,y):
         x=x*self.stride+self.batch_ray_rad
         y=y*self.stride+self.batch_ray_rad
-        i = self.indexes[x-self.batch_ray_rad:x+self.batch_ray_rad,y-self.batch_ray_rad:y+self.batch_ray_rad]
-        self.indexes[x-self.batch_ray_rad:x+self.batch_ray_rad,y-self.batch_ray_rad:y+self.batch_ray_rad] =i+1
+        i = self.indexes[x-self.batch_ray_rad:x+self.batch_ray_rad+1,y-self.batch_ray_rad:y+self.batch_ray_rad+1]
+        self.indexes[x-self.batch_ray_rad:x+self.batch_ray_rad+1,y-self.batch_ray_rad:y+self.batch_ray_rad+1] =i+1
         i=i.repeat(3,1,1).permute(1,2,0)
-        temp = self.dataset[x-self.batch_ray_rad:x+self.batch_ray_rad,y-self.batch_ray_rad:y+self.batch_ray_rad,:,:]
+        temp = self.dataset[x-self.batch_ray_rad:x+self.batch_ray_rad+1,y-self.batch_ray_rad:y+self.batch_ray_rad+1,:,:]
         inde = (i%self.max).long().unsqueeze(-1)
         out = temp.gather(-1,inde).squeeze(-1)
 
-        self.observations[x-self.batch_ray_rad:x+self.batch_ray_rad,y-self.batch_ray_rad:y+self.batch_ray_rad,:] = (self.observations[x-self.batch_ray_rad:x+self.batch_ray_rad,y-self.batch_ray_rad:y+self.batch_ray_rad,:] * i +  out )/(i+1)
-        self.variance[x-self.batch_ray_rad:x+self.batch_ray_rad,y-self.batch_ray_rad:y+self.batch_ray_rad,:] = (self.variance[x-self.batch_ray_rad:x+self.batch_ray_rad,y-self.batch_ray_rad:y+self.batch_ray_rad,:]*i + out**2 )/(i+1)
+        self.observations[x-self.batch_ray_rad:x+self.batch_ray_rad+1,y-self.batch_ray_rad:y+self.batch_ray_rad+1,:] = (self.observations[x-self.batch_ray_rad:x+self.batch_ray_rad+1,y-self.batch_ray_rad:y+self.batch_ray_rad+1,:] * i +  out )/(i+1)
+        self.variance[x-self.batch_ray_rad:x+self.batch_ray_rad+1,y-self.batch_ray_rad:y+self.batch_ray_rad+1,:] = (self.variance[x-self.batch_ray_rad:x+self.batch_ray_rad+1,y-self.batch_ray_rad:y+self.batch_ray_rad+1,:]*i + out**2 )/(i+1)
         
     def render(self):  
         return self.observations.numpy()
@@ -63,7 +63,6 @@ class PhysicSimulation:
     def observe(self):
         render = self.render()
         temp = np.concatenate((render,np.expand_dims((self.indexes.numpy()/self.max),-1), self.variance.numpy() - render**2),axis=-1)           
-#        print(np.min(temp))
         return temp
 
     def truth(self):
@@ -97,9 +96,8 @@ class CustomEnv(gym.Env):
     self.WIDTH = self.simulation.WIDTH
     self.HEIGHT = self.simulation.HEIGHT
 
-    self.maxW=stride(self.WIDTH-2*self.batch_rad+self.stride,self.stride)
-    self.maxH=stride(self.HEIGHT-2*self.batch_rad+self.stride,self.stride)
-
+    self.maxW=stride(self.WIDTH-2*self.batch_rad-1,self.stride)
+    self.maxH=stride(self.HEIGHT-2*self.batch_rad-1,self.stride)
     self.action_space = spaces.MultiDiscrete([self.maxH,self.maxW])
     self.observation_space = spaces.Box(low=-1e-8, high=1, shape=
                     (self.HEIGHT,self.WIDTH,7), dtype=np.float32) #MACHINE PRECISION
@@ -126,8 +124,7 @@ class CustomEnv(gym.Env):
     # Reset the state of the environment to an initial state
     self.count =0
     self.total = 0
-    print(self.simulation.observe()[:,:,3])
-    self.simulation = PhysicSimulation(self.path,self.number_images,self.frame_number)
+    self.simulation = PhysicSimulation(self.path,self.number_images,self.frame_number,self.batch_rad,self.stride)
     return self.simulation.observe()
     
   def render(self, mode='human', close=False):
@@ -146,18 +143,20 @@ def train_ppo_model():
                      
     algo = ppo.PPO(env=CustomEnv,config={
 'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':16,\
-'frame_number':1, 'spp':4, "batch_rad":2, "stride":2
+'frame_number':1, 'spp':4, "batch_rad":2, "stride":5
             },
           'framework' :"torch",
-        'num_workers':2,
+        'num_workers':1,
+"evaluation_num_workers":1,
 'num_gpus_per_worker':1,
 "evaluation_interval":1,
 #"rollout_fragment_length":111,
-"train_batch_size":400,
+"train_batch_size":20,
+"sgd_minibatch_size":20
 #"batch_mode":"complete_episodes"
    #     'conv_filters':[out_channels, kernel, stride]
     })
-    
+    print(algo.evaluate())
     # Train for one iteration.
     for _ in range(10):
          print(algo.train())
