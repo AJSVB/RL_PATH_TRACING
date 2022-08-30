@@ -30,13 +30,14 @@ def aggregate_by_pixel(path,number_images,frame_number = 1):
 
 
 class PhysicSimulation:
-    def __init__(self,path,number_images,frame_number=1, batch_rad = 8, strid =1):
+    def __init__(self,path,spp,frame_number=1, batch_rad = 8, strid =1):
         self.stride = strid
-        self.dataset=aggregate_by_pixel(path,number_images,frame_number)[-10:,-10:,:,:]
+        self.HEIGHT = 84
+        self.WIDTH =  84
+
+        self.max = math.ceil(self.WIDTH*self.HEIGHT*spp/((2*batch_rad+1)**2))
+        self.dataset=aggregate_by_pixel(path,self.max,frame_number)[-self.HEIGHT:,-self.WIDTH:,:,:]
         self.ground_truth = self.dataset.mean(dim = 3)
-        self.max = number_images
-        self.HEIGHT = self.ground_truth.shape[0]
-        self.WIDTH = self.ground_truth.shape[1]
         self.indexes = torch.zeros([self.HEIGHT, self.WIDTH], dtype = torch.int)
         self.observations= torch.zeros([self.HEIGHT,self.WIDTH,3])
         self.variance = torch.zeros([self.HEIGHT,self.WIDTH,3])
@@ -86,23 +87,22 @@ class CustomEnv(gym.Env):
   def __init__(self, env_config):
     super(CustomEnv, self).__init__()
     self.path = env_config["path"]
-    self.number_images = env_config["number_images"]
     self.frame_number = env_config["frame_number"]
     self.spp = env_config['spp']
     self.batch_rad = env_config["batch_rad"]
     self.stride = env_config["stride"]
-    self.simulation = PhysicSimulation(self.path,self.number_images,self.frame_number,self.batch_rad,self.stride)
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.batch_rad,self.stride)
+    self.number_images = self.simulation.max #=Horizon
     self.truth = self.simulation.truth()
     self.WIDTH = self.simulation.WIDTH
     self.HEIGHT = self.simulation.HEIGHT
-
     self.maxW=stride(self.WIDTH-2*self.batch_rad-1,self.stride)
     self.maxH=stride(self.HEIGHT-2*self.batch_rad-1,self.stride)
     self.action_space = spaces.MultiDiscrete([self.maxH,self.maxW])
     self.observation_space = spaces.Box(low=-1e-8, high=1, shape=
                     (self.HEIGHT,self.WIDTH,7), dtype=np.float32) #MACHINE PRECISION
     self.count = 0
-    self.spec = Spec(math.ceil(self.WIDTH*self.HEIGHT*self.spp/((2*self.batch_rad+1)**2)))
+    self.spec = Spec(self.number_images)
     self.total=0    
 
   def step(self, action):
@@ -142,25 +142,25 @@ from ray import serve
 def train_ppo_model():
                      
     algo = ppo.PPO(env=CustomEnv,config={
-'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':16,\
-'frame_number':1, 'spp':4, "batch_rad":2, "stride":5
+'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':None,\
+'frame_number':1, 'spp':4, "batch_rad":5, "stride":7
             },
-          'framework' :"tf2",
-"eager_tracing":True
+          'framework' :"torch",
+#"eager_tracing":True,
 
 
-        'num_workers':24,
+        'num_workers':20,
 #"evaluation_num_workers":1,
-'num_gpus_per_worker':.166,
+'num_gpus_per_worker':.2,
 "evaluation_interval":10,
 #"rollout_fragment_length":111,
-"train_batch_size":240,
-"sgd_minibatch_size":240
+#"train_batch_size":200,
+#"sgd_minibatch_size":240
 #"batch_mode":"complete_episodes"
    #     'conv_filters':[out_channels, kernel, stride]
     })
     # Train for one iteration.
-    for _ in range(1000):
+    for _ in range(100):
          print(algo.train())
     # Save state of the trained Algorithm in a checkpoint.
     algo.save("/tmp/rllib_checkpoint")
