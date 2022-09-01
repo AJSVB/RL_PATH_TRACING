@@ -32,30 +32,25 @@ def aggregate_by_pixel(path,number_images,frame_number = 1,HEIGHT=480,WIDTH=640)
 class PhysicSimulation:
     def __init__(self,path,spp,frame_number=1, sppps=.1):
         self.HEIGHT = 480 #TODO optimize!
-        self.WIDTH =  640
+        self.WIDTH =   640
         self.max = int(spp/sppps)
 #        print(self.max)
         self.sppps = sppps
         self.dataset=aggregate_by_pixel(path,self.max,frame_number,self.HEIGHT,self.WIDTH)
         self.ground_truth = self.dataset.mean(dim = 3).numpy()
         self.dataset=self.dataset.view( -1, *self.dataset.shape[2:])
-        self.indexes = torch.zeros([self.HEIGHT, self.WIDTH], dtype = torch.int)
+        self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
-        self.observations= torch.zeros([self.HEIGHT,self.WIDTH,3])
-        self.observations=self.observations.view( -1, *self.observations.shape[2:])
-        self.variance = torch.zeros([self.HEIGHT,self.WIDTH,3])
-        self.variance=self.variance.view( -1, *self.variance.shape[2:])
-        self.count = 0
+        self.observations= self.dataset[:,:,0]
+        self.variance = self.observations**2
+        self.count = int(1/sppps)
 
     def reset(self):
-        self.indexes = torch.zeros([self.HEIGHT, self.WIDTH], dtype = torch.int)
+        self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
-        self.observations= torch.zeros([self.HEIGHT,self.WIDTH,3])
-        self.observations=self.observations.view( -1, *self.observations.shape[2:])
-        self.variance = torch.zeros([self.HEIGHT,self.WIDTH,3])
-        self.variance=self.variance.view( -1, *self.variance.shape[2:])
-        self.count = 0
-
+        self.observations= self.dataset[:,:,0]
+        self.variance = self.observations**2
+        self.count = int(1/self.sppps)
 
 
     def __len__(self):
@@ -63,16 +58,12 @@ class PhysicSimulation:
 
     def simulate(self, x):
         x=x.flatten()
-        #print(len(x))
-        max = np.percentile(x,100-100*self.sppps)
+        max = np.quantile(x,1-self.sppps)
         idx = np.where(x>=max)[0]
-        #print(len(idx))
         indexes = self.indexes[idx] 
         self.indexes[idx]= indexes+1
         temp = self.dataset[idx,:,self.count]
-        #print(indexes)
         indexes = indexes.unsqueeze(1).repeat(1,3)
-        #print(indexes)
         self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1)
         self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
         self.count+=1
@@ -88,6 +79,7 @@ class PhysicSimulation:
     def observe(self):
         rendersquared = self.observations**2
         temp = np.concatenate((self.render(),self.out((self.indexes/self.max).unsqueeze(-1)), self.out(self.variance - rendersquared)),axis=-1)           
+#        temp = self.out(torch.cat((self.observations/indexes,(self.indexes/self.max).unsqueeze(-1),self.variance/indexes - rendersquared),axis=-1))          
         return temp
 
     def truth(self):
@@ -122,21 +114,21 @@ class CustomEnv(gym.Env):
     self.action_space = spaces.Box(low=0,high=1, shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
                     (self.HEIGHT,self.WIDTH,7), dtype=np.float32) #MACHINE PRECISION
-    self.count = 0
     self.spec = Spec(self.number_images)
 
   def step(self, action):
+    a = time.time()
     old = np.sum((self.simulation.render() - self.truth)**2)
     self.simulation.simulate(action)
     observation = self.simulation.observe()
+  #  print(observation)
     #print(np.min(observation))
     #print(np.max(observation))
     #print(old)
     #print(np.sum((observation[:,:,:3] - self.truth)**2))
     reward = (old - np.sum((observation[:,:,:3] - self.truth)**2))
-    self.count+=1
-    done = self.spec.max_episode_steps <= self.count
-#    print(reward)
+    done = self.spec.max_episode_steps <= self.simulation.count
+    print(reward)
     #self.total = self.total + reward
     #print(np.max(observation))
     #print(np.min(observation))
@@ -177,13 +169,14 @@ def train_ppo_model():
 #"eager_tracing":True,
 
 
-        'num_workers':9,
+        'num_workers':2,
 #"evaluation_num_workers":1,
-'num_gpus_per_worker':.44,
+'num_gpus_per_worker':2,
 "evaluation_interval":-1,
 #"rollout_fragment_length":40,
-"train_batch_size":120,
-"sgd_minibatch_size":120
+"train_batch_size":40,
+"sgd_minibatch_size":40,
+# "lr":.1
 #"batch_mode":"complete_episodes"
    #     'conv_filters':[out_channels, kernel, stride]
     })
