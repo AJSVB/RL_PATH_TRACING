@@ -1,4 +1,4 @@
-
+	
 
 
 import torch
@@ -32,7 +32,7 @@ def aggregate_by_pixel(path,number_images,frame_number = 1,HEIGHT=480,WIDTH=640)
 class PhysicSimulation:
     def __init__(self,path,spp,frame_number=1, sppps=.1):
         self.HEIGHT = 720  #TODO optimize!
-        self.WIDTH =  1080
+        self.WIDTH =  1280
         self.max = int(spp/sppps)
 #        print(self.max)
         self.sppps = sppps
@@ -167,37 +167,34 @@ import ray.rllib.algorithms.appo as appo
 from ray import serve
 def train_ppo_model():
     a = time.time()
-    algo = ppo.PPO(env=CustomEnv,config={
+    algo = appo.APPO(env=CustomEnv,config={
 'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':None,\
 'frame_number':1, 'spp':4, "sppps":.1
             },
           'framework' :"torch",
 #"eager_tracing":True,
 
-#"num_envs_per_worker":1,
-        'num_workers':2,
+"num_envs_per_worker":1,
+        'num_workers':1,
 #"evaluation_num_workers":1,
-'num_gpus_per_worker':2,
+'num_gpus_per_worker':4,
 "evaluation_interval":1,
-#"rollout_fragment_length":40,
-"train_batch_size":360,
-#"sgd_minibatch_size":4,
+"rollout_fragment_length":10, #Increase this
+"train_batch_size":10,
+#"sgd_minibatch_size":40,
 #"vf_clip_param":10000
 #"batch_mode":"complete_episodes"
   "model":{
-"dim":780,
-"vf_share_layers": True,
-  "conv_filters": [
-     [12,[4,4],[2,3]],
-     [16, [4,4], 2], 
-     [24, [4, 4], 2], 
-     [32, [4, 4], 2], 
-     [64, [4, 4], 2],
-     [128, [4,4], 2], 
-     [256, [4, 4], 2], 
-     [512, [6, 6], 2], 
-]},
-    })
+    "conv_filters": [
+#        [8 , [6,6] , [3,4]],
+#        [16, [18, 24], [7, 9]], #
+        [16,[24,48], [21,36]],
+        [32, [6, 6], 4],
+        [256, [9, 9], 1],
+    ]
+
+
+    }})
     # Train for one iteration.
     for _ in range(100):
          algo.train()
@@ -208,3 +205,21 @@ def train_ppo_model():
 
 
 train_ppo_model()
+
+
+
+"""
+"dim":720,
+"vf_share_layers": True,
+  "conv_filters": [
+     [16,[7,7],[2,3]],
+     [16, [3,3], 2], 
+     [32, [3, 3], 2], 
+     [48, [3, 3], 2], 
+     [64, [3, 3], 2],
+     [96, [3, 3], 2], 
+     [128, [3, 3], 2], 
+     [192, [3, 3], 2],
+     [256, [3, 3], 2] 
+]},
+"""
