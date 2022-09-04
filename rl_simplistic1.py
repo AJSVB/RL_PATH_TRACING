@@ -167,7 +167,7 @@ import ray.rllib.algorithms.appo as appo
 from ray import serve
 def train_ppo_model():
     a = time.time()
-    algo = appo.APPO(env=CustomEnv,config={
+    algo = ppo.PPO(env=CustomEnv,config={
 'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':None,\
 'frame_number':1, 'spp':4, "sppps":.1
             },
@@ -175,13 +175,13 @@ def train_ppo_model():
 #"eager_tracing":True,
 
 "num_envs_per_worker":1,
-        'num_workers':1,
+        'num_workers':4,
 #"evaluation_num_workers":1,
-'num_gpus_per_worker':4,
+'num_gpus_per_worker':1,
 "evaluation_interval":1,
 "rollout_fragment_length":10, #Increase this
-"train_batch_size":10,
-#"sgd_minibatch_size":40,
+"train_batch_size":40, #Was 20
+"sgd_minibatch_size":40,
 #"vf_clip_param":10000
 #"batch_mode":"complete_episodes"
   "model":{
