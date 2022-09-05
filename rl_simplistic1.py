@@ -58,6 +58,7 @@ class PhysicSimulation:
         #print(len(x))
         max = np.quantile(x,1-self.sppps)
         idx = np.where(x>=max)[0]
+        idx = np.append(idx+1,idx)
         #print(len(idx))
         indexes = self.indexes[idx] 
         self.indexes[idx]= indexes+1
@@ -114,7 +115,7 @@ class CustomEnv(gym.Env):
     self.truth = self.simulation.truth()
     self.WIDTH = self.simulation.WIDTH
     self.HEIGHT = self.simulation.HEIGHT
-    self.action_space = spaces.Box(low=0,high=1, shape=(int(self.HEIGHT*self.WIDTH),))
+    self.action_space = spaces.Box(low=0,high=1, shape=(int(self.HEIGHT*self.WIDTH/2),))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
                     (self.HEIGHT,self.WIDTH,7), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.number_images)
@@ -167,7 +168,7 @@ import ray.rllib.algorithms.appo as appo
 from ray import serve
 def train_ppo_model():
     a = time.time()
-    algo = ppo.PPO(env=CustomEnv,config={
+    algo = appo.APPO(env=CustomEnv,config={
 'env_config':{'path': "/scratch/datasets/Antoine/barcelona/",'number_images':None,\
 'frame_number':1, 'spp':4, "sppps":.1
             },
@@ -175,16 +176,17 @@ def train_ppo_model():
 #"eager_tracing":True,
 
 "num_envs_per_worker":1,
-        'num_workers':4,
+        'num_workers':1,
 #"evaluation_num_workers":1,
-'num_gpus_per_worker':1,
+'num_gpus_per_worker':4,
 "evaluation_interval":1,
 "rollout_fragment_length":10, #Increase this
-"train_batch_size":40, #Was 20
-"sgd_minibatch_size":40,
+"train_batch_size":10, #Was 20
+#"sgd_minibatch_size":256,
 #"vf_clip_param":10000
 #"batch_mode":"complete_episodes"
   "model":{
+"vf_share_layers":True,
     "conv_filters": [
 #        [8 , [6,6] , [3,4]],
 #        [16, [18, 24], [7, 9]], #
