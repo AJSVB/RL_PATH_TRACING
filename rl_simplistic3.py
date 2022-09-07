@@ -13,7 +13,7 @@ import torchvision.transforms as T
 import random
 
 def p(a):
-    if random.random()>.999:
+    if random.random()>.99:
         print(a)
 
 def stride(number,strid):
@@ -48,7 +48,7 @@ class PhysicSimulation:
     def __init__(self,path,spp,frame_number=1, sppps=.1):
         self.HEIGHT = 84 # 720  #TODO optimize!
         self.WIDTH =  84 # 1280
-        self.max = int(spp/sppps)
+        self.max = int(spp/sppps) - int(1/sppps)
 #        print(self.max)
         self.sppps = sppps
         self.dataset=aggregate_by_pixel(path,self.max,frame_number,self.HEIGHT,self.WIDTH)
@@ -58,14 +58,13 @@ class PhysicSimulation:
         self.reset()
 
     def reset(self):
-        print("this is callsed")
+        p("this is callsed")
         self.permutation = torch.randperm(self.max)
         self.observations= self.dataset[:,:,self.permutation[0]]
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
-        self.count = int(1/self.sppps)
-
+        self.count = 0
 
     def __len__(self):
         return self.max * self.HEIGHT *self.WIDTH
@@ -168,7 +167,8 @@ class CustomEnv(gym.Env):
     #    img= self.simulation.indexes.unsqueeze(-1)
     #    norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
     #    save(self.simulation.out(norm),str(random.random())+".png")
-    self.simulation.reset()
+#    self.simulation.reset()
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps)
     return self.simulation.observe()
     
   def render(self, mode='human', close=False):
@@ -332,11 +332,11 @@ def train_ppo_model():
 #"eager_tracing":True,
 
 "num_envs_per_worker":1,
-        'num_workers':4,
-'horizon':1,
+        'num_workers':1,
+'horizon':10,
 #"entropy_coeff":1e-6,
 #"evaluation_num_workers":1,
-'num_gpus_per_worker':1,
+'num_gpus_per_worker':4,
 "evaluation_interval":1,
 #"rollout_fragment_length":10, #Increase this
 #"train_batch_size":10,
