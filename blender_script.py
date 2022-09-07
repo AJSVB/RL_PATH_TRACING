@@ -2,6 +2,7 @@ import bpy
 import time
 from random import randint
 
+<<<<<<< HEAD
 nodes = bpy.context.scene.node_tree.nodes
 links = bpy.context.scene.node_tree.links
 render_layers = nodes.new('CompositorNodeRLayers')

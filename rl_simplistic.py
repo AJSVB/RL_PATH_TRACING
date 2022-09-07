@@ -150,7 +150,7 @@ def save(data,name):
     img= T.ToPILImage()(torch.Tensor(data).permute([2,0,1]))
     img.save(name)
 
-
+"""
 import ray
 
 ray.init(num_gpus=4)
@@ -190,3 +190,4 @@ def train_ppo_model():
 
 
 checkpoint_path = train_ppo_model()
+"""
