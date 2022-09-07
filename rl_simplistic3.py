@@ -12,6 +12,9 @@ import time
 import torchvision.transforms as T
 import random
 
+def p(a):
+    if random.random()>.999:
+        print(a)
 
 def stride(number,strid):
    return math.floor(number/strid) +1
@@ -55,6 +58,7 @@ class PhysicSimulation:
         self.reset()
 
     def reset(self):
+        print("this is callsed")
         self.permutation = torch.randperm(self.max)
         self.observations= self.dataset[:,:,self.permutation[0]]
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
@@ -71,6 +75,7 @@ class PhysicSimulation:
         #print(len(x))
         max = np.quantile(x,1-self.sppps)
         idx = np.where(x>=max)[0]
+        p(idx)
         #print(len(idx))
         indexes = self.indexes[idx] 
         self.indexes[idx]= indexes+1
@@ -129,7 +134,7 @@ class CustomEnv(gym.Env):
     self.truth = self.simulation.truth()
     self.WIDTH = self.simulation.WIDTH
     self.HEIGHT = self.simulation.HEIGHT
-    self.action_space = spaces.Box(low=0,high=1, shape=(int(self.HEIGHT*self.WIDTH),))
+    self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
                     (self.HEIGHT,self.WIDTH,21), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.number_images)
@@ -142,7 +147,8 @@ class CustomEnv(gym.Env):
     #print(np.max(observation))
     #print(old)
     #print(np.sum((observation[:,:,:3] - self.truth)**2))
-    reward = - old + MultiSSIM(observation[:,:,:3], self.truth)
+    p(str(old) + "   " +str(MultiSSIM(observation[:,:,:3], self.truth)) + "   " + str(MultiSSIM(observation[:,:,:3], self.truth)))
+    reward = - old + MultiSSIM(self.simulation.render(), self.truth)
     done = self.spec.max_episode_steps <= self.simulation.count
 #    print(reward)
     #self.total = self.total + reward
@@ -158,10 +164,10 @@ class CustomEnv(gym.Env):
     # Reset the state of the environment to an initial state
     self.count =0
     #save(self.simulation.render(),"render.png")
-    if random.random()>.9:
-        img= self.simulation.indexes.unsqueeze(-1)
-        norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
-        save(self.simulation.out(norm),str(random.random())+".png")
+    #if random.random()>.9:
+    #    img= self.simulation.indexes.unsqueeze(-1)
+    #    norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
+    #    save(self.simulation.out(norm),str(random.random())+".png")
     self.simulation.reset()
     return self.simulation.observe()
     
@@ -171,6 +177,130 @@ class CustomEnv(gym.Env):
 def save(data,name):
     img= T.ToPILImage()(torch.Tensor(data).permute([2,0,1]))
     img.save(name)
+
+
+import numpy as np
+from typing import Dict, List
+import gym
+
+from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
+from ray.rllib.models.torch.misc import (
+    normc_initializer,
+    same_padding,
+    SlimConv2d,
+    SlimFC,
+)
+from ray.rllib.models.utils import get_activation_fn, get_filter_config
+from ray.rllib.utils.annotations import override
+from ray.rllib.utils.framework import try_import_torch
+from ray.rllib.utils.typing import ModelConfigDict, TensorType
+
+torch, nn = try_import_torch()
+
+
+class FCN(TorchModelV2, nn.Module):
+    def __init__(
+        self,
+        obs_space: gym.spaces.Space,
+        action_space: gym.spaces.Space,
+        num_outputs: int,
+        model_config: ModelConfigDict,
+        name: str,
+    ):
+
+        
+        model_config["conv_filters"] = [[4,[3,3], [1,1]],
+                                        [4,[3,3], [1,1]],
+                                        [4,[3,3], [1,1]],
+                                        [2,[3,3], [1,1]]]
+
+        TorchModelV2.__init__(
+            self, obs_space, action_space, num_outputs, model_config, name
+        )
+        nn.Module.__init__(self)
+
+        activation = "tanh" #self.model_config.get("conv_activation")
+        filters = self.model_config["conv_filters"]
+        
+        # Post FC net config.
+        post_fcnet_hiddens = model_config.get("post_fcnet_hiddens", [])
+        post_fcnet_activation = get_activation_fn(
+            model_config.get("post_fcnet_activation"), framework="torch"
+        )
+
+        no_final_linear = True #self.model_config.get("no_final_linear")
+        vf_share_layers = True
+
+        self.last_layer_is_flattened = False
+        self._logits = None
+
+        layers = []
+        (w, h, in_channels) = obs_space.shape
+
+        in_size = [w, h]
+        for out_channels, kernel, stride in filters:
+            padding, out_size = same_padding(in_size, kernel, stride)
+            layers.append(
+                SlimConv2d(
+                    in_channels,
+                    out_channels,
+                    kernel,
+                    stride,
+                    padding,
+                    activation_fn=activation,
+                )
+            )
+            in_channels = out_channels
+            in_size = out_size
+
+       # print(num_outputs)
+        self._convs = nn.Sequential(*layers)
+
+        # Build the value layers
+        self._value_branch_separate = self._value_branch = None
+        if True:
+        #    print(out_size)
+         #   print(int(out_size[0]*out_size[1]))
+            self._value_branch = SlimFC(
+                int(out_size[0]*out_size[1]*2), 1, initializer=normc_initializer(0.01), activation_fn=None
+            )
+            self.value_branch = lambda x: torch.sum(x,-1)
+         #   self._value_branch = nn.Linear(int(out_size[0]*out_size[1]*2), 1)
+
+
+        # Holds the current "base" output (before logits layer).
+        self._features = None
+
+    @override(TorchModelV2)
+    def forward(
+        self,
+        input_dict: Dict[str, TensorType],
+        state: List[TensorType],
+        seq_lens: TensorType,
+    ) -> (TensorType, List[TensorType]):
+        self._features = input_dict["obs"].float()
+        # Permuate b/c data comes in as [B, dim, dim, channels]:
+        self._features = self._features.permute(0, 3, 1, 2)
+        conv_out = self._convs(self._features)
+        s=conv_out.shape
+        conv_out = conv_out.reshape(s[0], 1, -1).permute(0,2,1).squeeze(-1)
+        self._features = conv_out 
+    #    print(conv_out.shape)
+        # Store features to save forward pass when getting value_function out.
+        print(conv_out[0])
+        print(conv_out[0].mean())
+        return conv_out, state
+
+    @override(TorchModelV2)
+    def value_function(self) -> TensorType:
+        assert self._features is not None, "must call forward() first"
+        return self._value_branch(self._features.squeeze(-1)).squeeze(1)
+
+
+    
+from ray.rllib.models import ModelCatalog
+ModelCatalog.register_custom_model("FCN", FCN)
+
 
 
 import ray
@@ -189,11 +319,12 @@ import ray.rllib.algorithms.crr as crr
 import ray.rllib.algorithms.ddpg as ddpg
 import ray.rllib.algorithms.es as es
 import ray.rllib.algorithms.pg as pg
+import ray.rllib.algorithms.mbmpo as mbmpo
 
 from ray import serve
 def train_ppo_model():
     a = time.time()
-    algo = ddppo.DDPPO(env=CustomEnv,config={
+    algo = ppo.PPO(env=CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
 'frame_number':1, 'spp':2, "sppps":.1
             },
@@ -202,7 +333,7 @@ def train_ppo_model():
 
 "num_envs_per_worker":1,
         'num_workers':4,
-
+'horizon':1,
 #"entropy_coeff":1e-6,
 #"evaluation_num_workers":1,
 'num_gpus_per_worker':1,
@@ -213,15 +344,10 @@ def train_ppo_model():
 #"sgd_minibatch_size":40,
 #"vf_clip_param":10000
 #"batch_mode":"complete_episodes"
-#  "model":{
-#    "conv_filters": [
-##        [8 , [6,6] , [3,4]],
-##        [16, [18, 24], [7, 9]], #
-#        [16,[24,48], [21,36]],
-#        [32, [6, 6], 4],
-#        [256, [9, 9], 1],
-#    ]
-#    }
+  "model":{
+"conv_activation":"tanh"
+#   "custom_model":"FCN"
+}
 })
     # Train for one iteration.
     for _ in range(100):
@@ -234,20 +360,3 @@ def train_ppo_model():
 
 train_ppo_model()
 
-
-
-"""
-"dim":720,
-"vf_share_layers": True,
-  "conv_filters": [
-     [16,[7,7],[2,3]],
-     [16, [3,3], 2], 
-     [32, [3, 3], 2], 
-     [48, [3, 3], 2], 
-     [64, [3, 3], 2],
-     [96, [3, 3], 2], 
-     [128, [3, 3], 2], 
-     [192, [3, 3], 2],
-     [256, [3, 3], 2] 
-]},
-"""
