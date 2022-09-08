@@ -33,30 +33,30 @@ def get_add(path,detail):
     return x
 
 def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
-    dataset = torch.cat([get_add(path,a) for a in  ["DiffCol","Normal","Mist"]])
+    dataset = torch.cat([get_add(path,a) for a in  ["Normal"]])
     dataset = dataset.permute([1,2,0])
     return dataset[-HEIGHT:,-WIDTH:]
 
 class PhysicSimulation:
-    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None):
-        self.HEIGHT =  720 
-        self.WIDTH =   1280
-        self.max = int(spp/sppps) - int(1/sppps)+1
+    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,HEIGHT=480,WIDTH=730,max=10):
+        self.HEIGHT =  HEIGHT
+        self.WIDTH =   WIDTH
         self.dataset = cached(list)
 #        self.dataset=aggregate_by_pixel(path,self.max,frame_number,self.HEIGHT,self.WIDTH)
         self.sppps = sppps
-        self.ground_truth = self.dataset.mean(dim = 3).numpy()
         self.dataset=self.dataset.view( -1, *self.dataset.shape[2:])
         self.add = add
+        self.max = max
         self.reset()
 
     def reset(self):
         self.permutation = torch.randperm(self.max)
-        self.observations = self.dataset[:,:,self.permutation[0]]
+        self.observations = torch.zeros(self.dataset.shape[:2]) #self.dataset[:,:,self.permutation[0]]
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
-        self.count = 1
+        self.count = 0 #1
+
     def simulate(self, x):
         x=x.flatten()
         max = np.quantile(x,1-self.sppps)
@@ -68,7 +68,6 @@ class PhysicSimulation:
         self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1)
         self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
         self.count+=1
-
 
     def out(self,data):
         return data.view(self.HEIGHT,self.WIDTH,*data.shape[1:]).numpy()    
@@ -83,9 +82,7 @@ class PhysicSimulation:
         return np.concatenate((temp,self.add),axis=-1)
 
     def truth(self):
-        return self.ground_truth
-    
-
+        return np.mean(self.out(self.dataset),-1)
 
 
 class Spec:
@@ -113,27 +110,28 @@ class CustomEnv(gym.Env):
     self.sppps = env_config["sppps"]
     self.HEIGHT = 720 
     self.WIDTH =   1280
-    self.max = int(self.spp/self.sppps) #- int(1/self.sppps)+1
+    self.max = int(self.spp/self.sppps) #- int(1/sppps)+1
     self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
     self.add = load_additional(self.path,1,self.HEIGHT,self.WIDTH)
-
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add)
-    self.number_images = self.simulation.max #=Horizon
-    self.truth = self.simulation.truth()
-    self.WIDTH = self.simulation.WIDTH
-    self.HEIGHT = self.simulation.HEIGHT
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max)
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (self.HEIGHT,self.WIDTH,12), dtype=np.float32) #MACHINE PRECISION
-    self.spec = Spec(self.number_images)
+                    (self.HEIGHT,self.WIDTH,8), dtype=np.float32) #MACHINE PRECISION
+    self.spec = Spec(self.max)
+    self.ground_truth = self.simulation.truth()
+    self.top = 0
 
   def step(self, action):
-    old = MultiSSIM(self.simulation.render(), self.truth)
+    old = MultiSSIM(self.simulation.render(), self.ground_truth)
     self.simulation.simulate(action)
     observation = self.simulation.observe()
-    #print(old)
-    reward = - old + MultiSSIM(self.simulation.render(), self.truth)
+    new = MultiSSIM(self.simulation.render(), self.ground_truth)
+    #if self.top<new:
+    #    print(new)
+    #    self.top = new
+    reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count
+    
     return observation,reward.detach().numpy(),done, {}
 
     
@@ -142,7 +140,7 @@ class CustomEnv(gym.Env):
         img= self.simulation.indexes.unsqueeze(-1)
         norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
         save(self.simulation.out(norm),str(random.random())+".png")
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add)
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max)
     return self.simulation.observe()
     
   def render(self, mode='human', close=False):
@@ -183,8 +181,9 @@ class FCN(TorchModelV2, nn.Module):
     ):
 
         
-        model_config["conv_filters"] = [[4,[7,7], [1,1]],
-                                        [4,[7,7], [1,1]],
+        model_config["conv_filters"] = [
+                                        [8,[7,7], [1,1]],
+                                        [6,[7,7], [1,1]],
                                         [4,[7,7], [1,1]],
                                         [2,[7,7], [1,1]]]
 
@@ -230,19 +229,10 @@ class FCN(TorchModelV2, nn.Module):
        # print(num_outputs)
         self._convs = nn.Sequential(*layers)
 
-        # Build the value layers
-        self._value_branch_separate = self._value_branch = None
-        if True:
-        #    print(out_size)
-         #   print(int(out_size[0]*out_size[1]))
-            self._value_branch = SlimFC(
+        
+        self._value_branch = SlimFC(
                 int(out_size[0]*out_size[1]*2), 1, initializer=normc_initializer(0.01), activation_fn=None
             )
-  #          self.value_branch = lambda x: torch.sum(x,-1)
-         #   self._value_branch = nn.Linear(int(out_size[0]*out_size[1]*2), 1)
-
-
-        # Holds the current "base" output (before logits layer).
         self._features = None
 
     @override(TorchModelV2)
@@ -305,27 +295,24 @@ def train_ppo_model():
           'framework' :"torch",
 #"eager_tracing":True,
 
-#"num_envs_per_worker":10,
-        'num_workers':4,
-"entropy_coeff":1e-4,
+#"num_envs_per_worker":5,
+        'num_workers':2,
+"entropy_coeff":1e-3,
 #"evaluation_num_workers":1,
 #'num_cpus_per_worker':10,
-'num_gpus_per_worker':1,
-"evaluation_interval":10,
-"rollout_fragment_length":8, #Increase this
-"train_batch_size":32,
-"replay_buffer_num_slots":80,
-#"grad_clip":4,
-#"sgd_minibatch_size":40,
-#"vf_clip_param":10000
-#"batch_mode":"complete_episodes"
+'num_gpus_per_worker':2,
+"evaluation_interval":5,
+"rollout_fragment_length":20, #Increase this
+"train_batch_size":40,
+"replay_buffer_num_slots":50,
+
   "model":{
 #"conv_activation":"tanh"
    "custom_model":"FCN"
 }
 })
     # Train for one iteration.
-    for _ in range(100):
+    for _ in range(30):
          algo.train()
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.
