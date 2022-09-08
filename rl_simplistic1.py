@@ -181,7 +181,7 @@ def train_ppo_model():
 'num_gpus_per_worker':4,
 "evaluation_interval":1,
 "rollout_fragment_length":10, #Increase this
-"train_batch_size":10, #Was 20
+"train_batch_size":64, #Was 20
 #"sgd_minibatch_size":256,
 #"vf_clip_param":10000
 #"batch_mode":"complete_episodes"
