@@ -79,7 +79,7 @@ class PhysicSimulation:
 
     def observe(self):
         rendersquared = self.observations**2
-        temp = np.concatenate((self.render(),self.out((self.indexes/self.max).unsqueeze(-1)), self.out(self.variance - rendersquared)),axis=-1)           
+        temp = np.concatenate((self.render(),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)           
         return np.concatenate((temp,self.add),axis=-1)
 
     def truth(self):
@@ -124,7 +124,7 @@ class CustomEnv(gym.Env):
     self.HEIGHT = self.simulation.HEIGHT
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (self.HEIGHT,self.WIDTH,14), dtype=np.float32) #MACHINE PRECISION
+                    (self.HEIGHT,self.WIDTH,12), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.number_images)
 
   def step(self, action):
@@ -183,10 +183,10 @@ class FCN(TorchModelV2, nn.Module):
     ):
 
         
-        model_config["conv_filters"] = [[8,[5,5], [1,1]],
-                                        [6,[5,5], [1,1]],
-                                        [4,[5,5], [1,1]],
-                                        [2,[5,5], [1,1]]]
+        model_config["conv_filters"] = [[4,[7,7], [1,1]],
+                                        [4,[7,7], [1,1]],
+                                        [4,[7,7], [1,1]],
+                                        [2,[7,7], [1,1]]]
 
         TorchModelV2.__init__(
             self, obs_space, action_space, num_outputs, model_config, name
@@ -305,15 +305,16 @@ def train_ppo_model():
           'framework' :"torch",
 #"eager_tracing":True,
 
-"num_envs_per_worker":1,
+#"num_envs_per_worker":10,
         'num_workers':4,
 "entropy_coeff":1e-4,
 #"evaluation_num_workers":1,
 #'num_cpus_per_worker':10,
 'num_gpus_per_worker':1,
 "evaluation_interval":10,
-"rollout_fragment_length":12, #Increase this
-"train_batch_size":48,
+"rollout_fragment_length":8, #Increase this
+"train_batch_size":32,
+"replay_buffer_num_slots":80,
 #"grad_clip":4,
 #"sgd_minibatch_size":40,
 #"vf_clip_param":10000
