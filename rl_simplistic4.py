@@ -1,3 +1,5 @@
+
+
 import torch
 import math
 import torchvision
@@ -10,6 +12,13 @@ import time
 import torchvision.transforms as T
 import random
 
+def p(a):
+    if random.random()>.0:
+        print(a)
+
+def stride(number,strid):
+   return math.floor(number/strid) +1
+
 def get_ith_image(path,i,frame_number = 1,HEIGHT=480,WIDTH=640):
     image = Image.open(path+str(frame_number).zfill(4) + "-" + str(i).zfill(5)+'.png0001.png')
     x = TF.to_tensor(image)
@@ -20,9 +29,6 @@ def aggregate_by_pixel(path,number_images,frame_number = 1,HEIGHT=480,WIDTH=640)
     dataset = torch.cat([get_ith_image(path,i,frame_number,HEIGHT,WIDTH) for i in range(number_images)],0)
     dataset = dataset.permute([2,3,1,0])
     return dataset
-
-def cached(list):
-    return torch.cat(list,0).permute([2,3,1,0])
 
 
 def get_add(path,detail):
@@ -37,34 +43,35 @@ def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
     dataset = dataset.permute([1,2,0])
     return dataset[-HEIGHT:,-WIDTH:]
 
-class PhysicSimulation:
-    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None):
-        self.HEIGHT =  720 
-        self.WIDTH =   1280
-        self.max = int(spp/sppps) #- int(1/sppps)+1
-        self.dataset = cached(list)
-#        self.dataset=aggregate_by_pixel(path,self.max,frame_number,self.HEIGHT,self.WIDTH)
-        self.sppps = sppps
-        self.ground_truth = self.dataset.mean(dim = 3).numpy()
-        self.dataset=self.dataset.view( -1, *self.dataset.shape[2:])
-        self.add = add
-        self.reset()
 
-    def reset(self):
-        self.permutation = torch.randperm(self.max)
-        self.observations = torch.zeros([*self.dataset.shape[:2]]) #self.dataset[:,:,self.permutation[0]]
+class PhysicSimulation:
+    def __init__(self,HEIGHT,WIDTH,spp,sppps,dataset):
+        self.HEIGHT = 84 # 720  #TODO optimize!
+        self.WIDTH =  84 # 1280
+        self.max = int(spp/sppps) - int(1/sppps) +1
+        self.sppps = sppps
+        self.dataset=aggregate_by_pixel(self.path,self.max,self.frame_number,self.HEIGHT,self.WIDTH)
+        self.truth = self.dataset.mean(dim = 3).numpy()
+        self.dataset=self.dataset.view( -1, *self.dataset.shape[2:])
+        self.permutation = range(self.max) #torch.randperm(self.max)
+        self.observations = self.dataset[:,:,self.permutation[0]]
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
-        self.count = 0 #1
+        self.count = 1
+
     def simulate(self, x):
         x=x.flatten()
+        #print(len(x))
         max = np.quantile(x,1-self.sppps)
         idx = np.where(x>=max)[0]
+        #print(len(idx))
         indexes = self.indexes[idx] 
         self.indexes[idx]= indexes+1
         temp = self.dataset[idx,:,self.permutation[self.count]]
+        #print(indexes)
         indexes = indexes.unsqueeze(1).repeat(1,3)
+        #print(indexes)
         self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1)
         self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
         self.count+=1
@@ -80,11 +87,7 @@ class PhysicSimulation:
     def observe(self):
         rendersquared = self.observations**2
         temp = np.concatenate((self.render(),self.out((self.indexes/self.max).unsqueeze(-1)), self.out(self.variance - rendersquared)),axis=-1)           
-        return np.concatenate((temp,self.add),axis=-1)
-
-    def truth(self):
-        return self.ground_truth
-    
+        return temp
 
 
 
@@ -95,7 +98,7 @@ class Spec:
 
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 def MultiSSIM(a,b):
-    return ms_ssim(torch.Tensor(a).permute([2,0,1]).unsqueeze(0),torch.Tensor(b).permute([2,0,1]).unsqueeze(0),data_range=1)
+    return ssim(torch.Tensor(a).permute([2,0,1]).unsqueeze(0),torch.Tensor(b).permute([2,0,1]).unsqueeze(0),data_range=1)
 
 
 
@@ -111,39 +114,62 @@ class CustomEnv(gym.Env):
     self.frame_number = env_config["frame_number"]
     self.spp = env_config['spp']
     self.sppps = env_config["sppps"]
-    self.HEIGHT = 720 
-    self.WIDTH =   1280
-    self.max = int(self.spp/self.sppps) #- int(1/self.sppps)+1
-    self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
+    self.HEIGHT = 84 # 720  #TODO optimize!
+    self.WIDTH =  84 # 1280
+    self.max = int(self.spp/self.sppps) - int(1/self.sppps) + 1
+    self.dataset=aggregate_by_pixel(self.path,self.max,self.frame_number,self.HEIGHT,self.WIDTH)
+    self.truth = self.dataset.mean(dim = 3).numpy()
+    self.dataset=self.dataset.view( -1, *self.dataset.shape[2:])
     self.add = load_additional(self.path,1,self.HEIGHT,self.WIDTH)
-
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add)
-    self.number_images = self.simulation.max #=Horizon
-    self.truth = self.simulation.truth()
+    self.simulation = PhysicSimulation(self.HEIGHT,self.WIDTH,self.spp,self.sppps,self.dataset)
     self.WIDTH = self.simulation.WIDTH
     self.HEIGHT = self.simulation.HEIGHT
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
                     (self.HEIGHT,self.WIDTH,21), dtype=np.float32) #MACHINE PRECISION
-    self.spec = Spec(self.number_images)
+    self.spec = Spec(self.max)
+
+  def observe(self):
+    return np.concatenate((self.simulation.observe(), self.add),-1)
 
   def step(self, action):
+    self.simulation = PhysicSimulation(self.HEIGHT,self.WIDTH,self.spp,self.sppps,self.dataset)
     old = MultiSSIM(self.simulation.render(), self.truth)
     self.simulation.simulate(action)
-    observation = self.simulation.observe()
+    observation = self.observe()
+    #print(np.min(observation))
+    #print(np.max(observation))
     #print(old)
+    #print(np.sum((observation[:,:,:3] - self.truth)**2))
+    p(str(old) + "   " +str(MultiSSIM(self.simulation.render(), self.truth)))
     reward = - old + MultiSSIM(self.simulation.render(), self.truth)
     done = self.spec.max_episode_steps <= self.simulation.count
+    if done:
+        p("reset")
+        self.simulation = PhysicSimulation(self.HEIGHT,self.WIDTH,self.spp,self.sppps,self.dataset)
+
+#    print(reward)
+    #self.total = self.total + reward
+    #print(np.max(observation))
+    #print(np.min(observation))
+    #print(observation.shape)
+    #print((np.isnan(observation) | np.isnan(observation)).any())
+    #print(reward)
     return observation,reward.detach().numpy(),done, {}
 
     
   def reset(self):
-    if random.random()>.99:
-        img= self.simulation.indexes.unsqueeze(-1)
-        norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
-        save(self.simulation.out(norm),str(random.random())+".png")
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add)
-    return self.simulation.observe()
+    # Reset the state of the environment to an initial state
+    #save(self.simulation.render(),"render.png")
+    #if random.random()>.9:
+    #    img= self.simulation.indexes.unsqueeze(-1)
+    #    norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
+    #    save(self.simulation.out(norm),str(random.random())+".png")
+#    self.simulation.reset()
+  #  p("resrt")
+ #   self.simulation = PhysicSimulation(self.HEIGHT,self.WIDTH,self.spp,self.sppps,self.dataset)
+
+    return self.observe()
     
   def render(self, mode='human', close=False):
     return self.simulation.render()
@@ -238,7 +264,7 @@ class FCN(TorchModelV2, nn.Module):
             self._value_branch = SlimFC(
                 int(out_size[0]*out_size[1]*2), 1, initializer=normc_initializer(0.01), activation_fn=None
             )
-  #          self.value_branch = lambda x: torch.sum(x,-1)
+            self.value_branch = lambda x: torch.sum(x,-1)
          #   self._value_branch = nn.Linear(int(out_size[0]*out_size[1]*2), 1)
 
 
@@ -261,8 +287,8 @@ class FCN(TorchModelV2, nn.Module):
         self._features = conv_out 
     #    print(conv_out.shape)
         # Store features to save forward pass when getting value_function out.
- #       print(conv_out[0])
- #       print(conv_out[0].mean())
+        print(conv_out[0])
+        print(conv_out[0].mean())
         return conv_out, state
 
     @override(TorchModelV2)
@@ -298,30 +324,29 @@ import ray.rllib.algorithms.mbmpo as mbmpo
 from ray import serve
 def train_ppo_model():
     a = time.time()
-    algo = appo.APPO(env=CustomEnv,config={
+    algo = ppo.PPO(env=CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
 'frame_number':1, 'spp':2, "sppps":.1
             },
           'framework' :"torch",
 #"eager_tracing":True,
 
-#"num_envs_per_worker":10,
-        'num_workers':4,
+"num_envs_per_worker":1,
+        'num_workers':1,
 'horizon':10,
 #"entropy_coeff":1e-6,
 #"evaluation_num_workers":1,
-#'num_cpus_per_worker':10,
 'num_gpus_per_worker':1,
 "evaluation_interval":1,
-"rollout_fragment_length":10, #Increase this
-"train_batch_size":10,
+#"rollout_fragment_length":10, #Increase this
+#"train_batch_size":10,
 #"grad_clip":4,
 #"sgd_minibatch_size":40,
 #"vf_clip_param":10000
 #"batch_mode":"complete_episodes"
   "model":{
 #"conv_activation":"tanh"
-   "custom_model":"FCN"
+#   "custom_model":"FCN"
 }
 })
     # Train for one iteration.
