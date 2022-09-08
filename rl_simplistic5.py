@@ -183,10 +183,10 @@ class FCN(TorchModelV2, nn.Module):
     ):
 
         
-        model_config["conv_filters"] = [[4,[3,3], [1,1]],
-                                        [4,[3,3], [1,1]],
-                                        [4,[3,3], [1,1]],
-                                        [2,[3,3], [1,1]]]
+        model_config["conv_filters"] = [[8,[5,5], [1,1]],
+                                        [6,[5,5], [1,1]],
+                                        [4,[5,5], [1,1]],
+                                        [2,[5,5], [1,1]]]
 
         TorchModelV2.__init__(
             self, obs_space, action_space, num_outputs, model_config, name
@@ -305,16 +305,15 @@ def train_ppo_model():
           'framework' :"torch",
 #"eager_tracing":True,
 
-#"num_envs_per_worker":10,
+"num_envs_per_worker":1,
         'num_workers':4,
-'horizon':10,
 "entropy_coeff":1e-4,
 #"evaluation_num_workers":1,
 #'num_cpus_per_worker':10,
 'num_gpus_per_worker':1,
-"evaluation_interval":1,
-"rollout_fragment_length":10, #Increase this
-"train_batch_size":10,
+"evaluation_interval":10,
+"rollout_fragment_length":12, #Increase this
+"train_batch_size":48,
 #"grad_clip":4,
 #"sgd_minibatch_size":40,
 #"vf_clip_param":10000
