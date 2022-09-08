@@ -39,8 +39,8 @@ def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
 
 class PhysicSimulation:
     def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None):
-        self.HEIGHT =  720 
-        self.WIDTH =   1280
+        self.HEIGHT =  1080
+        self.WIDTH =  1440 
         self.max = int(spp/sppps) #- int(1/sppps)+1
         self.dataset = cached(list)
 #        self.dataset=aggregate_by_pixel(path,self.max,frame_number,self.HEIGHT,self.WIDTH)
@@ -111,8 +111,8 @@ class CustomEnv(gym.Env):
     self.frame_number = env_config["frame_number"]
     self.spp = env_config['spp']
     self.sppps = env_config["sppps"]
-    self.HEIGHT = 720 
-    self.WIDTH =   1280
+    self.HEIGHT = 1080
+    self.WIDTH =   1440
     self.max = int(self.spp/self.sppps) #- int(1/self.sppps)+1
     self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
     self.add = load_additional(self.path,1,self.HEIGHT,self.WIDTH)
@@ -313,8 +313,8 @@ def train_ppo_model():
 #'num_cpus_per_worker':10,
 'num_gpus_per_worker':1,
 "evaluation_interval":1,
-"rollout_fragment_length":10, #Increase this
-"train_batch_size":10,
+"rollout_fragment_length":4, #Increase this
+"train_batch_size":4,
 #"grad_clip":4,
 #"sgd_minibatch_size":40,
 #"vf_clip_param":10000
