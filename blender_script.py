@@ -6,6 +6,7 @@ from random import randint
 
 scene = bpy.context.scene
 nodes = bpy.context.scene.node_tree.nodes
+render_layers = nodes.new('CompositorNodeRLayers')
 
 for frame in range(scene.frame_start, scene.frame_start + 1):
   for i in range(1000):

@@ -4,25 +4,6 @@ ssh ascardigli@gate03.aime.info -p 21109
 blender myscene.blend --background --python myscript.py
 
 
-import bpy
-import time
-from random import randint
-
-
-scene = bpy.context.scene
-for frame in range(scene.frame_start, scene.frame_start + 1):
-  for i in range(10000):
-    bpy.context.scene.cycles.seed = randint(-(0xfffffff-1), 0xfffffff)
-    bpy.context.scene.cycles.samples = 1
-    bpy.context.scene.render.image_settings.color_mode ='RGB'
-    bpy.context.scene.render.image_settings.file_format='PNG'
-    bpy.context.scene.render.filepath = "~"
-    bpy.context.scene.render.engine = 'CYCLES'    
-    scene.render.filepath = '~/' + str(frame).zfill(4) + "-" + str(i).zfill(5) 
-    scene.frame_set(frame)
-    bpy.ops.render.render(write_still=True)
-  
-
 ray install-nightly
 python -m pip install -U --no-cache-dir "ray[rllib,tune,ml]"
 
@@ -30,4 +11,8 @@ tensorboard --logdir ~/ray_results/
 ssh ascardigli@gate03.aime.info -p 21109 -L *:16006:ascardigli@gate03.aime.info:6006     
 
 
-mitwoch 2 - 3
+monk temple Full HD
+mse [139132.86, 69971.62, 34788.83, 23264.787, 17448.736, 13946.2705, 11586.639, 9929.338, 8632.979, 7703.0146, 6937.462, 6306.9185, 5764.094, 5306.4595, 4922.4683, 4603.2505, 4302.186, 4041.131, 3821.157, 3618.727]
+ssim[0.42279496788978577, 0.42841657996177673, 0.506866991519928, 0.5601639747619629, 0.6013772487640381, 0.6350007653236389, 0.6618238687515259, 0.6851773262023926, 0.7042787671089172, 0.720612108707428, 0.7360185980796814, 0.7485879063606262, 0.7604201436042786, 0.7711337208747864, 0.7804000973701477, 0.7889514565467834, 0.7969556450843811, 0.8045105338096619, 0.8113052248954773, 0.8172089457511902]
+ms_ssim[0.5519067645072937, 0.8000893592834473, 0.8614214062690735, 0.8911295533180237, 0.9095047116279602, 0.921840250492096, 0.9311956763267517, 0.9384856224060059, 0.9441941380500793, 0.9487178921699524, 0.9527461528778076, 0.9560261368751526, 0.9587497711181641, 0.9614604115486145, 0.9634543061256409, 0.9653707146644592, 0.9671733379364014, 0.9688428044319153, 0.970251739025116, 0.9713136553764343]
+
