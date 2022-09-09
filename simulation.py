@@ -31,7 +31,7 @@ def get_add(path,detail):
     x = TF.to_tensor(image)
     if x[0,:].equal(x[1,:]):
         x = x[0:1,:]
-    return x
+    return x.mean(0).unsqueeze(0)
 
 def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
     dataset = torch.cat([get_add(path,a) for a in  ["Normal"]])
@@ -117,7 +117,7 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max)
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (self.HEIGHT,self.WIDTH,6), dtype=np.float32) #MACHINE PRECISION
+                    (self.HEIGHT,self.WIDTH,4), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
     self.ground_truth = self.simulation.truth()
     self.top = 0

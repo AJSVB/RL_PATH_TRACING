@@ -28,7 +28,7 @@ def train_ppo_model():
 "rollout_fragment_length":8, #Increase this
 "train_batch_size":32,
 "replay_buffer_num_slots":50,
-
+#"disable_env_checking":True,
   "model":{
 #"conv_activation":"tanh"
    "custom_model":"UN"
