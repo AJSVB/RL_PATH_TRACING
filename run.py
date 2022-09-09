@@ -1,4 +1,5 @@
 import unet
+import fcn
 import simulation 
 import ray
 import time
@@ -18,20 +19,20 @@ def train_ppo_model():
             },
           'framework' :"torch",
 #"eager_tracing":True,
-"clip_param":.07,"decay":.97,"epsilon":.01, "grad_clip":.4,"lambda":.925,"lr":.001, "momentum":.1,"vf_loss_coeff":.81,"entropy_coeff":1e-3,
-#"num_envs_per_worker":5,
-        'num_workers':4,
+#"clip_param":.07,"decay":.97,"epsilon":.01, "grad_clip":.4,"lambda":.925,"lr":.001, "momentum":.1,"vf_loss_coeff":.81,"entropy_coeff":1e-4,
+"num_envs_per_worker":1,
+        'num_workers':2,
 #"evaluation_num_workers":1,
 #'num_cpus_per_worker':10,
-'num_gpus_per_worker':1,
+'num_gpus_per_worker':2,
 "evaluation_interval":5,
-"rollout_fragment_length":8, #Increase this
-"train_batch_size":32,
+"rollout_fragment_length":20, #Increase this
+"train_batch_size":40,
 "replay_buffer_num_slots":50,
 #"disable_env_checking":True,
   "model":{
 #"conv_activation":"tanh"
-   "custom_model":"UN"
+   "custom_model":"FCN"
 }
 })
     # Train for one iteration.
