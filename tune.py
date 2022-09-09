@@ -10,6 +10,8 @@ import time
 import torchvision.transforms as T
 import random
 
+import unet
+
 def get_ith_image(path,i,frame_number = 1,HEIGHT=480,WIDTH=640):
     image = Image.open(path+str(frame_number).zfill(4) + "-" + str(i).zfill(5)+'.png0001.png')
     x = TF.to_tensor(image)
@@ -78,7 +80,7 @@ class PhysicSimulation:
 
     def observe(self):
         rendersquared = self.observations**2
-        temp = np.concatenate((self.render(),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)           
+        temp = np.concatenate((self.out(self.observations.mean(-1).unsqueeze(-1)),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)           
         return np.concatenate((temp,self.add),axis=-1)
 
     def truth(self):
@@ -116,7 +118,7 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max)
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (self.HEIGHT,self.WIDTH,8), dtype=np.float32) #MACHINE PRECISION
+                    (self.HEIGHT,self.WIDTH,6), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
     self.ground_truth = self.simulation.truth()
     self.top = 0
@@ -155,121 +157,9 @@ import numpy as np
 from typing import Dict, List
 import gym
 
-from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
-from ray.rllib.models.torch.misc import (
-    normc_initializer,
-    same_padding,
-    SlimConv2d,
-    SlimFC,
-)
-from ray.rllib.models.utils import get_activation_fn, get_filter_config
-from ray.rllib.utils.annotations import override
-from ray.rllib.utils.framework import try_import_torch
-from ray.rllib.utils.typing import ModelConfigDict, TensorType
-
-torch, nn = try_import_torch()
-
-
-class FCN(TorchModelV2, nn.Module):
-    def __init__(
-        self,
-        obs_space: gym.spaces.Space,
-        action_space: gym.spaces.Space,
-        num_outputs: int,
-        model_config: ModelConfigDict,
-        name: str,
-    ):
-
-        
-        model_config["conv_filters"] = [
-                                        [8,[7,7], [1,1]],
-                                        [6,[7,7], [1,1]],
-                                        [4,[7,7], [1,1]],
-                                        [2,[7,7], [1,1]]]
-
-        TorchModelV2.__init__(
-            self, obs_space, action_space, num_outputs, model_config, name
-        )
-        nn.Module.__init__(self)
-
-        activation = "tanh" #self.model_config.get("conv_activation")
-        filters = self.model_config["conv_filters"]
-        
-        # Post FC net config.
-        post_fcnet_hiddens = model_config.get("post_fcnet_hiddens", [])
-        post_fcnet_activation = get_activation_fn(
-            model_config.get("post_fcnet_activation"), framework="torch"
-        )
-
-        no_final_linear = True #self.model_config.get("no_final_linear")
-        vf_share_layers = True
-
-        self.last_layer_is_flattened = False
-        self._logits = None
-
-        layers = []
-        (w, h, in_channels) = obs_space.shape
-
-        in_size = [w, h]
-        for out_channels, kernel, stride in filters:
-            padding, out_size = same_padding(in_size, kernel, stride)
-            layers.append(
-                SlimConv2d(
-                    in_channels,
-                    out_channels,
-                    kernel,
-                    stride,
-                    padding,
-                    activation_fn=activation,
-                )
-            )
-            in_channels = out_channels
-            in_size = out_size
-
-       # print(num_outputs)
-        self._convs = nn.Sequential(*layers)
-
-        
-        self._value_branch = SlimFC(
-                int(out_size[0]*out_size[1]*2), 1, initializer=normc_initializer(0.01), activation_fn=None
-            )
-        self._features = None
-
-    @override(TorchModelV2)
-    def forward(
-        self,
-        input_dict: Dict[str, TensorType],
-        state: List[TensorType],
-        seq_lens: TensorType,
-    ) -> (TensorType, List[TensorType]):
-        self._features = input_dict["obs"].float()
-        # Permuate b/c data comes in as [B, dim, dim, channels]:
-        self._features = self._features.permute(0, 3, 1, 2)
-        conv_out = self._convs(self._features)
-        s=conv_out.shape
-        conv_out = conv_out.reshape(s[0], 1, -1).permute(0,2,1).squeeze(-1)
-        self._features = conv_out 
-    #    print(conv_out.shape)
-        # Store features to save forward pass when getting value_function out.
- #       print(conv_out[0])
- #       print(conv_out[0].mean())
-        return conv_out, state
-
-    @override(TorchModelV2)
-    def value_function(self) -> TensorType:
-        assert self._features is not None, "must call forward() first"
-        return self._value_branch(self._features.squeeze(-1)).squeeze(1)
-
-
-    
-from ray.rllib.models import ModelCatalog
-ModelCatalog.register_custom_model("FCN", FCN)
-
-
-
 import ray
 
-ray.init(num_gpus=4)
+#ray.init(num_gpus=4)
 
 import ray.rllib.algorithms.ppo as ppo
 import ray.rllib.algorithms.ddppo as ddppo
@@ -280,10 +170,7 @@ import random
 from ray import air, tune
 from ray.tune.schedulers import PopulationBasedTraining
 
-if __name__ == "__main__":
-
-  def explore(config):
-
+if True:
     pbt = PopulationBasedTraining(
         time_attr="time_total_s",
         perturbation_interval=3,
@@ -295,36 +182,35 @@ if __name__ == "__main__":
             "lr": [1e-3, 5e-4, 1e-4, 5e-5, 1e-5],
             "grad_clip": [.4,4,40,400],
 	  "decay": lambda:random.uniform(.95,1),
-          "momentum":lambda:[0,.1,.3,.5,.7,.9,.99],
-          "epsilon":lambda:[0.01,0.1,0.3],
+          "momentum": [0,.1,.3,.5,.7,.9,.99],
+          "epsilon": [0.01,0.1,0.3],
           "vf_loss_coeff":lambda: random.uniform(0,1),
-          "entropy_coeff": lambda: [1e-5,1e-4,1e-3,1e-2,1e-1]
-        },
-        custom_explore_fn=explore,
+          "entropy_coeff": [1e-5,1e-4,1e-3,1e-2,1e-1]
+        }
     )
     
     tuner = tune.Tuner(
-        "APPO",
+        "APPO", 
         tune_config=tune.TuneConfig(
             metric="episode_reward_mean",
             mode="max",
             scheduler=pbt,
-            num_samples=1,
+            num_samples=10,
         ),
         param_space={
-            "env": Custom_Env,
+            "env": CustomEnv,
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
 'frame_number':1, 'spp':2, "sppps":.1 },
           'framework' :"torch",
-        'num_workers':2,
+        'num_workers':4,
 "entropy_coeff":1e-3,
-'num_gpus_per_worker':2,
+'num_gpus_per_worker':1,
 #"evaluation_interval":5,
-"rollout_fragment_length":30, #Increase this
-"train_batch_size":60,
+"rollout_fragment_length":8, #Increase this
+"train_batch_size":32,
 "replay_buffer_num_slots":50,
   "model":{
-   "custom_model":"FCN"
+   "custom_model":"UN"
 }
   }
    )
