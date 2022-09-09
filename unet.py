@@ -58,12 +58,23 @@ class Decoder(nn.Module):
 class UNet(nn.Module):
     def __init__(self, in_channels, enc_chs=(6,8,8,16,32), dec_chs=(64, 32, 16, 8), num_class=2,  retain_dim=False, out_sz=(720,1280)):
         super().__init__()
-        enc_chs=(in_channels,in_channels*2,in_channels*4,in_channels*8,in_channels*16)
-        dec_chs =(in_channels*16,in_channels*8,in_channels*4,in_channels*2,in_channels)
+        enc_chs=(2,4) #,8) #,in_channels*8)
+        dec_chs =(4,2)
         self.encoder     = Encoder(enc_chs)
         self.decoder     = Decoder(dec_chs)
         self.head        = nn.Conv2d(enc_chs[0], num_class, 3,padding=1)
+        self.pre =                 SlimConv2d(
+                    in_channels,
+                    2,
+                    3,
+                    1,
+                    1,
+                    activation_fn="linear",
+                )
+
+
     def forward(self, x):
+        x=self.pre(x)
         enc_ftrs = self.encoder(x)
         out      = self.decoder(enc_ftrs[::-1][0], enc_ftrs[::-1][1:])
         out      = self.head(out)

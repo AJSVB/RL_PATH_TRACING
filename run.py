@@ -26,8 +26,8 @@ def train_ppo_model():
 #'num_cpus_per_worker':10,
 'num_gpus_per_worker':1,
 "evaluation_interval":5,
-"rollout_fragment_length":15, #Increase this
-"train_batch_size":60,
+"rollout_fragment_length":20, #Increase this
+"train_batch_size":80,
 "replay_buffer_num_slots":50,
 #"disable_env_checking":True,
   "model":{
