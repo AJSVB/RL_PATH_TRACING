@@ -8,7 +8,7 @@ import torchvision.transforms.functional as TF
 import time
 import torchvision.transforms as T
 import random
-
+import torch
 import unet
 
 def get_ith_image(path,i,frame_number = 1,HEIGHT=480,WIDTH=640):

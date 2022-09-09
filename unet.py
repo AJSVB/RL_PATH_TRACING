@@ -1,4 +1,5 @@
-
+import gym
+from typing import Dict, List
 
 from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
 from ray.rllib.models.torch.misc import (
@@ -161,4 +162,4 @@ class UN(TorchModelV2, nn.Module):
         assert self._features is not None, "must call forward() first"
         return self._value_branch(self._features.squeeze(-1)).squeeze(1)
 from ray.rllib.models import ModelCatalog
-ModelCatalog.register_custom_model("Unet", UN)
+ModelCatalog.register_custom_model("UN", UN)
