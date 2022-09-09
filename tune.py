@@ -1,4 +1,4 @@
-import unet
+import fcn
 import simulation 
 
 import ray
@@ -13,31 +13,15 @@ import random
 
 from ray import air, tune
 from ray.tune.schedulers import PopulationBasedTraining
-
+import hyperopt as hp
+from ray.tune.search.hyperopt import HyperOptSearch
+from ray.tune.schedulers import ASHAScheduler
 if True:
 
-    space={
-            "lambda": hp.uniform("height",0.9, 1.0),
-            "clip_param": hp.uniform("clip_param",0.01, 0.9),
-            "lr": hp.choice("lr",[1e-3, 5e-4, 1e-4, 5e-5, 1e-5]),
-            "grad_clip": hp.choice("grad_clip",[.4,4,40,400]),
-	  "decay": hp.uniform("decay",.95,1),
-          "momentum": hp.choice("momentum",[0,.1,.3,.5,.7,.9,.99]),
-          "epsilon": hp.choice("epsilon",[0.01,0.1,0.3]),
-          "vf_loss_coeff": hp.uniform("vf_loss_coeff",0,1),
-          "entropy_coeff": hp.choice("entropy_coeff",[1e-5,1e-4,1e-3,1e-2,1e-1])
-        }
-
-    hyperopt_search = HyperOptSearch(space,
-        metric="episode_reward_mean", mode="max",
-        points_to_evaluate=current_best_params)
-
-
+    hyperopt_search = HyperOptSearch()
 
     scheduler = ASHAScheduler(
-        metric="episode_reward_mean",
-        mode="max",
-        max_t=10,
+        max_t=20,
         grace_period=1,
         reduction_factor=2,
     )
@@ -47,13 +31,12 @@ if True:
         tune_config=tune.TuneConfig(
             metric="episode_reward_mean",
             mode="max",
-            max_concurrent=1,
             search_alg=hyperopt_search,
             scheduler=scheduler,
             num_samples=50,
         ),
         param_space={
-            "env": CustomEnv,
+            "env": simulation.CustomEnv,
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
 'frame_number':1, 'spp':2, "sppps":.1 },
           'framework' :"torch",
@@ -65,7 +48,18 @@ if True:
 "replay_buffer_num_slots":50,
   "model":{
    "custom_model":"FCN"
-}
+},
+
+            "lambda": tune.uniform(0.9, 1.0),
+            "clip_param": tune.uniform(0.01, 0.9),
+            "lr": tune.choice([1e-3, 5e-4, 1e-4, 5e-5, 1e-5]),
+            "grad_clip": tune.choice([.4,4,40,400]),
+          "decay": tune.uniform(.95,1),
+          "momentum": tune.choice([0,.1,.3,.5,.7,.9,.99]),
+          "epsilon": tune.choice([0.01,0.1,0.3]),
+          "vf_loss_coeff": tune.uniform(0,1),
+          "entropy_coeff": tune.choice([1e-5,1e-4,1e-3,1e-2,1e-1])
+
   }
    )
     results = tuner.fit()
