@@ -11,6 +11,23 @@ import random
 import torch
 import unet
 
+
+def ground_truth(path,number_images=1000,frame_number=1,HEIGHT=720,WIDTH=1280,name=""):
+    dataset = torch.cat([get_ith_image(path,i,frame_number,HEIGHT,WIDTH) for i in range(number_images)],0)
+    dataset = dataset.mean(0)
+    img= T.ToPILImage()(dataset)
+    img.save(path+name)
+
+def get_truth(path)
+    image= Image.open(path)
+    x = TF.to_tensor(image)
+    x.unsqueeze_(0)
+    return x[:,:,-HEIGHT:,-WIDTH:]
+
+
+
+
+
 def get_ith_image(path,i,frame_number = 1,HEIGHT=480,WIDTH=640):
     image = Image.open(path+str(frame_number).zfill(4) + "-" + str(i).zfill(5)+'.png0001.png')
     x = TF.to_tensor(image)
@@ -82,10 +99,6 @@ class PhysicSimulation:
         temp = np.concatenate((self.out(self.observations.mean(-1).unsqueeze(-1)),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)           
         return np.concatenate((temp,self.add),axis=-1)
 
-    def truth(self):
-        return np.mean(self.out(self.dataset),-1)
-
-
 class Spec:
    def __init__(self,max_episode_steps):
     self.max_episode_steps = max_episode_steps
@@ -119,7 +132,7 @@ class CustomEnv(gym.Env):
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
                     (self.HEIGHT,self.WIDTH,4), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
-    self.ground_truth = self.simulation.truth()
+    self.ground_truth = get_truth(path+"truth.png")
     self.top = 0
 
   def step(self, action):
@@ -150,4 +163,3 @@ class CustomEnv(gym.Env):
 def save(data,name):
     img= T.ToPILImage()(torch.Tensor(data).permute([2,0,1]))
     img.save(name)
-

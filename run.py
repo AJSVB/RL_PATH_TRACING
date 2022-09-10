@@ -45,4 +45,4 @@ def train_ppo_model():
 
 
 train_ppo_model()
-
+#simulation.ground_truth("../datasets/temple/",name="truth.png")
