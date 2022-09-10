@@ -1,4 +1,3 @@
-
 import torch
 import math
 import torchvision
@@ -25,6 +24,7 @@ def aggregate_by_pixel(path,number_images,frame_number = 1,HEIGHT=480,WIDTH=640)
 def cached(list):
     return torch.cat(list,0).permute([2,3,1,0])
 
+
 def get_add(path,detail):
     image = Image.open(path+"~"+detail+'0004.png')
     x = TF.to_tensor(image)
@@ -39,8 +39,8 @@ def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
 
 class PhysicSimulation:
     def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None):
-        self.HEIGHT =  720
-        self.WIDTH =  1280 
+        self.HEIGHT =  720 
+        self.WIDTH =   1280
         self.max = int(spp/sppps) - int(1/sppps)+1
         self.dataset = cached(list)
 #        self.dataset=aggregate_by_pixel(path,self.max,frame_number,self.HEIGHT,self.WIDTH)
@@ -79,7 +79,7 @@ class PhysicSimulation:
 
     def observe(self):
         rendersquared = self.observations**2
-        temp = np.concatenate((self.render(),self.out((self.indexes/self.max).unsqueeze(-1)), self.out(self.variance - rendersquared)),axis=-1)           
+        temp = np.concatenate((self.render(),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)           
         return np.concatenate((temp,self.add),axis=-1)
 
     def truth(self):
@@ -111,9 +111,9 @@ class CustomEnv(gym.Env):
     self.frame_number = env_config["frame_number"]
     self.spp = env_config['spp']
     self.sppps = env_config["sppps"]
-    self.HEIGHT = 720
+    self.HEIGHT = 720 
     self.WIDTH =   1280
-    self.max = int(self.spp/self.sppps) - int(1/self.sppps)+1
+    self.max = int(self.spp/self.sppps) #- int(1/self.sppps)+1
     self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
     self.add = load_additional(self.path,1,self.HEIGHT,self.WIDTH)
 
@@ -124,7 +124,7 @@ class CustomEnv(gym.Env):
     self.HEIGHT = self.simulation.HEIGHT
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (self.HEIGHT,self.WIDTH,14), dtype=np.float32) #MACHINE PRECISION
+                    (self.HEIGHT,self.WIDTH,12), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.number_images)
 
   def step(self, action):
@@ -183,10 +183,10 @@ class FCN(TorchModelV2, nn.Module):
     ):
 
         
-        model_config["conv_filters"] = [[4,[5,5], [1,1]],
-                                        [4,[5,5], [1,1]],
-                                        [4,[5,5], [1,1]],
-                                        [2,[5,5], [1,1]]]
+        model_config["conv_filters"] = [[4,[7,7], [1,1]],
+                                        [4,[7,7], [1,1]],
+                                        [4,[7,7], [1,1]],
+                                        [2,[7,7], [1,1]]]
 
         TorchModelV2.__init__(
             self, obs_space, action_space, num_outputs, model_config, name
@@ -298,25 +298,26 @@ import ray.rllib.algorithms.mbmpo as mbmpo
 from ray import serve
 def train_ppo_model():
     a = time.time()
-    algo = appo.APPO(env=CustomEnv,config={
+    algo = ddppo.DDPPO(env=CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
 'frame_number':1, 'spp':2, "sppps":.1
             },
           'framework' :"torch",
 #"eager_tracing":True,
 
-#"num_envs_per_worker":10,
+"num_envs_per_worker":5,
         'num_workers':4,
-'horizon':10,
-#"entropy_coeff":1e-6,
+"entropy_coeff":1e-4,
 #"evaluation_num_workers":1,
-#'num_cpus_per_worker':10,
+'num_cpus_per_worker':10,
 'num_gpus_per_worker':1,
-"evaluation_interval":1,
-"rollout_fragment_length":4, #Increase this
-"train_batch_size":4,
+"evaluation_interval":10,
+"rollout_fragment_length":10, #Increase this
+"num_sgd_iter":1,
+#"train_batch_size":32,
+#"replay_buffer_num_slots":80,
 #"grad_clip":4,
-#"sgd_minibatch_size":40,
+"sgd_minibatch_size":50,
 #"vf_clip_param":10000
 #"batch_mode":"complete_episodes"
   "model":{
