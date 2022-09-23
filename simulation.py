@@ -18,7 +18,7 @@ def ground_truth(path,number_images=1000,frame_number=1,HEIGHT=720,WIDTH=1280,na
     img= T.ToPILImage()(dataset)
     img.save(path+name)
 
-def get_truth(path)
+def get_truth(path,HEIGHT=480,WIDTH=640):
     image= Image.open(path)
     x = TF.to_tensor(image)
     x.unsqueeze_(0)
@@ -106,7 +106,7 @@ class Spec:
 
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 def MultiSSIM(a,b):
-    return ms_ssim(torch.Tensor(a).permute([2,0,1]).unsqueeze(0),torch.Tensor(b).permute([2,0,1]).unsqueeze(0),data_range=1)
+    return ms_ssim(torch.Tensor(a).permute([2,0,1]).unsqueeze(0),torch.Tensor(b),data_range=1)
 
 
 
@@ -132,7 +132,7 @@ class CustomEnv(gym.Env):
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
                     (self.HEIGHT,self.WIDTH,4), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
-    self.ground_truth = get_truth(path+"truth.png")
+    self.ground_truth = get_truth("../datasets/temple/"+"truth.png",self.HEIGHT,self.WIDTH)
     self.top = 0
 
   def step(self, action):

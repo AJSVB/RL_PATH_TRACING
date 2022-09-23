@@ -44,5 +44,5 @@ def train_ppo_model():
    # return "/tmp/rllib_checkpoint/checkpoint_000001/checkpoint-1"
 
 
-train_ppo_model()
 #simulation.ground_truth("../datasets/temple/",name="truth.png")
+train_ppo_model()
