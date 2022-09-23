@@ -6,32 +6,42 @@ import os
 albedo="~DiffCol0004.png"
 normal= "~Normal0004.png"
 
-def tensor_to_pfm(img,name):
-  img =np.array(img,dtype=np.float32)/256.
-  shape = img.shape()[1:]
+HEIGHT=720 
+WIDTH =   1280
+
+def r(i):
+  return i[-HEIGHT:,-WIDTH:,:]
+
+
+def tensor_to_pfm(img,name,rescale=False):
+
+  img =r(np.array(img,dtype=np.float32))
+  if rescale:
+    img = img/255.
+  shape = img.shape[1:]
   loader = PFMLoader((shape[1], shape[0]), True, compress=False)
-  loader.save_pfm(name+".pfm", img)
+  loader.save_pfm("tmp/"+name+".pfm", img)
 
 def path_to_pfm(path,name):
-  img = Image.open(albedo)
-  tensor_to_pfm(img,name)
+  img = Image.open(path)
+  tensor_to_pfm(img,name,True)
 
 
 def pfm_to_tensor(path):
   loader = PFMLoader(color= True, compress=False)
   image = loader.load_pfm(path+".pfm")
-  return (image*255).astype(np.uint8)
+  return image
 
-def denoiser(color,alb,nrm):
-  os.system(" ~/oidn-1.4.3.x86_64.linux/bin/./oidnDenoise --ldr "+color+".pfm --alb "+alb+".pfm --nrm "+nrm+".pfm -o out.pfm")
+def denoiser(color,alb,nrm,pid):
+  os.system("~/oidn-1.4.3.x86_64.linux/bin/./oidnDenoise --ldr tmp/"+color+".pfm --alb tmp/"+alb+".pfm --nrm tmp/"+nrm+".pfm -v 0 -o tmp/"+pid+".pfm   > /dev/null ")
 
 
 def initialise(path):
   path_to_pfm(path+albedo,"albedo")
   path_to_pfm(path+normal,"normal")
 
-def denoise(img):
+def denoise(img,pid):
   tensor_to_pfm(img,"color")
-  denoiser("color","albedo","normal")
-  return pfm_to_tensor("out")
+  denoiser("color","albedo","normal",pid)
+  return pfm_to_tensor("tmp/"+pid)
 
