@@ -15,6 +15,7 @@ from filelock import FileLock
 import os
 
 def norm(a):
+    return a*0
     return (a-np.min(a))/(np.max(a)-np.min(a))
 
 def ground_truth(path,number_images=1000,frame_number=1,HEIGHT=720,WIDTH=1280,name=""):
@@ -58,7 +59,7 @@ def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
     return dataset[-HEIGHT:,-WIDTH:]
 
 class PhysicSimulation:
-    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,HEIGHT=480,WIDTH=730,max=10,denoinsing=True):
+    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,HEIGHT=480,WIDTH=730,max=10,denoising=True):
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.dataset = cached(list)
@@ -107,7 +108,7 @@ class PhysicSimulation:
 
     def observe(self):
         rendersquared = self.observations**2
-        temp = np.concatenate((self.out(self.observations.mean(-1).unsqueeze(-1)),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)           
+        temp = np.concatenate((self.out(self.observations.mean(-1).unsqueeze(-1)),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)            
         return np.concatenate((temp,self.add, np.expand_dims(norm((self.out(self.observations)-self.render()).mean(-1)),-1)   ),axis=-1,dtype=np.float16)
 
 
@@ -160,7 +161,6 @@ class CustomEnv(gym.Env):
         self.top = new
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count
-    
     return observation,reward.detach().numpy(),done, {"msssim":new.detach()}
 
     

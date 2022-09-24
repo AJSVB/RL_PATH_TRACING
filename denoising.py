@@ -33,7 +33,7 @@ def pfm_to_tensor(path):
   return image
 
 def denoiser(color,alb,nrm,pid):
-  os.system("~/oidn-1.4.3.x86_64.linux/bin/./oidnDenoise --ldr tmp/"+color+".pfm --alb tmp/"+alb+".pfm --nrm tmp/"+nrm+".pfm -v 0 -o tmp/"+pid+".pfm   > /dev/null ")
+  os.system("~/oidn-1.4.3.x86_64.linux/bin/./oidnDenoise --ldr tmp/"+color+".pfm --alb tmp/"+alb+".pfm --nrm tmp/"+nrm+".pfm -v 0 -o tmp/"+pid+".pfm  > /dev/null")
 
 
 def initialise(path):

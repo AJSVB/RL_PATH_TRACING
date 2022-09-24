@@ -35,7 +35,7 @@ def train_ppo_model():
 }
 })
     # Train for one iteration.
-    for _ in range(30):
+    for _ in range(100):
          algo.train()
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.
@@ -44,4 +44,5 @@ def train_ppo_model():
 
 
 #simulation.ground_truth("../datasets/temple/",name="truth.png")
+ray.init(num_gpus=4)
 train_ppo_model()
