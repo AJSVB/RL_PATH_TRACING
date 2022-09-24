@@ -11,6 +11,11 @@ import random
 import torch
 import unet
 import denoising
+from filelock import FileLock 
+import os
+
+def norm(a):
+    return (a-np.min(a))/(np.max(a)-np.min(a))
 
 def ground_truth(path,number_images=1000,frame_number=1,HEIGHT=720,WIDTH=1280,name=""):
     dataset = torch.cat([get_ith_image(path,i,frame_number,HEIGHT,WIDTH) for i in range(number_images)],0)
@@ -48,7 +53,7 @@ def get_add(path,detail):
     return x.mean(0).unsqueeze(0)
 
 def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
-    dataset = torch.cat([get_add(path,a) for a in  ["Normal"]])
+    dataset = torch.cat([get_add(path,a) for a in  ["Normal","DiffCol"]])
     dataset = dataset.permute([1,2,0])
     return dataset[-HEIGHT:,-WIDTH:]
 
@@ -67,11 +72,11 @@ class PhysicSimulation:
         self.denoising=denoising
     def reset(self):
         self.permutation = torch.randperm(self.max)
-        self.observations = torch.zeros(self.dataset.shape[:2]) #self.dataset[:,:,self.permutation[0]]
+        self.observations = self.dataset[:,:,self.permutation[0]] #torch.zeros(self.dataset.shape[:2])
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
-        self.count = 0 #1
+        self.count = 1 #0
         self.updated=False
     def simulate(self, x):
         x=x.flatten()
@@ -92,7 +97,8 @@ class PhysicSimulation:
     def render(self):        
       if self.denoising:
         if not self.updated:
-          self.denoised= denoising.denoise(self.out(self.observations),str(0)) 
+          with FileLock('tmp/0.pfm.lock'):
+            self.denoised= denoising.denoise(self.out(self.observations),str(0))
           self.updated=True
         return self.denoised
       else:
@@ -102,7 +108,8 @@ class PhysicSimulation:
     def observe(self):
         rendersquared = self.observations**2
         temp = np.concatenate((self.out(self.observations.mean(-1).unsqueeze(-1)),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)           
-        return np.concatenate((temp,self.add),axis=-1)
+        return np.concatenate((temp,self.add, np.expand_dims(norm((self.out(self.observations)-self.render()).mean(-1)),-1)   ),axis=-1,dtype=np.float16)
+
 
 class Spec:
    def __init__(self,max_episode_steps):
@@ -130,13 +137,13 @@ class CustomEnv(gym.Env):
     self.denoising = env_config['denoising']
     self.HEIGHT = 720 
     self.WIDTH =   1280
-    self.max = int(self.spp/self.sppps) #- int(1/sppps)+1
+    self.max = int(self.spp/self.sppps) - int(1/self.sppps)+1 #
     self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
     self.add = load_additional(self.path,1,self.HEIGHT,self.WIDTH)
     self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max,self.denoising)
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (self.HEIGHT,self.WIDTH,4), dtype=np.float32) #MACHINE PRECISION
+                    (self.HEIGHT,self.WIDTH,6), dtype=np.float16) #MACHINE PRECISION
     denoising.initialise("../datasets/temple/")
 
     self.spec = Spec(self.max)
@@ -154,7 +161,7 @@ class CustomEnv(gym.Env):
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count
     
-    return observation,reward.detach().numpy(),done, {}
+    return observation,reward.detach().numpy(),done, {"msssim":new.detach()}
 
     
   def reset(self):

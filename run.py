@@ -1,9 +1,8 @@
 #import unet
 import fcn
-import simulation 
 import ray
+import simulation 
 import time
-#ray.init(num_gpus=4)
 
 import ray.rllib.algorithms.ppo as ppo
 import ray.rllib.algorithms.ddppo as ddppo
@@ -21,7 +20,7 @@ def train_ppo_model():
 #"eager_tracing":True,
 "clip_param":.45,"decay":.97,"epsilon":.01, "grad_clip":4,"lambda":.925,"lr":.0001, "momentum":.5,"vf_loss_coeff":.81,"entropy_coeff":1e-3,
 "num_envs_per_worker":1,
-        'num_workers':1,
+        'num_workers':4,
 #"evaluation_num_workers":1,
 #'num_cpus_per_worker':10,
 'num_gpus_per_worker':1,
