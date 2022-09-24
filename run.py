@@ -1,9 +1,8 @@
 #import unet
 import fcn
-import simulation 
 import ray
+import simulation 
 import time
-#ray.init(num_gpus=4)
 
 import ray.rllib.algorithms.ppo as ppo
 import ray.rllib.algorithms.ddppo as ddppo
@@ -15,7 +14,7 @@ def train_ppo_model():
     a = time.time()
     algo = appo.APPO(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':2, "sppps":.1
+'frame_number':1, 'spp':2, "sppps":.1,"denoising":True,
             },
           'framework' :"torch",
 #"eager_tracing":True,
@@ -36,7 +35,7 @@ def train_ppo_model():
 }
 })
     # Train for one iteration.
-    for _ in range(30):
+    for _ in range(100):
          algo.train()
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.
@@ -44,5 +43,6 @@ def train_ppo_model():
    # return "/tmp/rllib_checkpoint/checkpoint_000001/checkpoint-1"
 
 
+#simulation.ground_truth("../datasets/temple/",name="truth.png")
+ray.init(num_gpus=4)
 train_ppo_model()
-

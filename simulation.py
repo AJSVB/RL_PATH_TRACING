@@ -10,6 +10,26 @@ import torchvision.transforms as T
 import random
 import torch
 import unet
+import denoising
+from filelock import FileLock 
+import os
+
+def norm(a):
+    return a*0
+    return (a-np.min(a))/(np.max(a)-np.min(a))
+
+def ground_truth(path,number_images=1000,frame_number=1,HEIGHT=720,WIDTH=1280,name=""):
+    dataset = torch.cat([get_ith_image(path,i,frame_number,HEIGHT,WIDTH) for i in range(number_images)],0)
+    dataset = dataset.mean(0)
+    img= T.ToPILImage()(dataset)
+    img.save(path+name)
+
+def get_truth(path,HEIGHT=480,WIDTH=640):
+    image= Image.open(path)
+    x = TF.to_tensor(image)
+    x.unsqueeze_(0)
+    return x[:,:,-HEIGHT:,-WIDTH:]
+
 
 def get_ith_image(path,i,frame_number = 1,HEIGHT=480,WIDTH=640):
     image = Image.open(path+str(frame_number).zfill(4) + "-" + str(i).zfill(5)+'.png0001.png')
@@ -34,12 +54,12 @@ def get_add(path,detail):
     return x.mean(0).unsqueeze(0)
 
 def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
-    dataset = torch.cat([get_add(path,a) for a in  ["Normal"]])
+    dataset = torch.cat([get_add(path,a) for a in  ["Normal","DiffCol"]])
     dataset = dataset.permute([1,2,0])
     return dataset[-HEIGHT:,-WIDTH:]
 
 class PhysicSimulation:
-    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,HEIGHT=480,WIDTH=730,max=10):
+    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,HEIGHT=480,WIDTH=730,max=10,denoising=True):
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.dataset = cached(list)
@@ -49,15 +69,16 @@ class PhysicSimulation:
         self.add = add
         self.max = max
         self.reset()
-
+        self.updated=False
+        self.denoising=denoising
     def reset(self):
         self.permutation = torch.randperm(self.max)
-        self.observations = torch.zeros(self.dataset.shape[:2]) #self.dataset[:,:,self.permutation[0]]
+        self.observations = self.dataset[:,:,self.permutation[0]] #torch.zeros(self.dataset.shape[:2])
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
-        self.count = 0 #1
-
+        self.count = 1 #0
+        self.updated=False
     def simulate(self, x):
         x=x.flatten()
         max = np.quantile(x,1-self.sppps)
@@ -69,21 +90,26 @@ class PhysicSimulation:
         self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1)
         self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
         self.count+=1
+        self.updated=False
 
     def out(self,data):
         return data.view(self.HEIGHT,self.WIDTH,*data.shape[1:]).numpy()    
 
-    def render(self):
+    def render(self):        
+      if self.denoising:
+        if not self.updated:
+          with FileLock('tmp/0.pfm.lock'):
+            self.denoised= denoising.denoise(self.out(self.observations),str(0))
+          self.updated=True
+        return self.denoised
+      else:
         return self.out(self.observations)
 
 
     def observe(self):
         rendersquared = self.observations**2
-        temp = np.concatenate((self.out(self.observations.mean(-1).unsqueeze(-1)),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)           
-        return np.concatenate((temp,self.add),axis=-1)
-
-    def truth(self):
-        return np.mean(self.out(self.dataset),-1)
+        temp = np.concatenate((self.out(self.observations.mean(-1).unsqueeze(-1)),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)            
+        return np.concatenate((temp,self.add, np.expand_dims(norm((self.out(self.observations)-self.render()).mean(-1)),-1)   ),axis=-1,dtype=np.float16)
 
 
 class Spec:
@@ -93,7 +119,7 @@ class Spec:
 
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 def MultiSSIM(a,b):
-    return ms_ssim(torch.Tensor(a).permute([2,0,1]).unsqueeze(0),torch.Tensor(b).permute([2,0,1]).unsqueeze(0),data_range=1)
+    return ms_ssim(torch.Tensor(a).permute([2,0,1]).unsqueeze(0),torch.Tensor(b),data_range=1)
 
 
 
@@ -109,17 +135,20 @@ class CustomEnv(gym.Env):
     self.frame_number = env_config["frame_number"]
     self.spp = env_config['spp']
     self.sppps = env_config["sppps"]
+    self.denoising = env_config['denoising']
     self.HEIGHT = 720 
     self.WIDTH =   1280
-    self.max = int(self.spp/self.sppps) #- int(1/sppps)+1
+    self.max = int(self.spp/self.sppps) - int(1/self.sppps)+1 #
     self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
     self.add = load_additional(self.path,1,self.HEIGHT,self.WIDTH)
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max)
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max,self.denoising)
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (self.HEIGHT,self.WIDTH,4), dtype=np.float32) #MACHINE PRECISION
+                    (self.HEIGHT,self.WIDTH,6), dtype=np.float16) #MACHINE PRECISION
+    denoising.initialise("../datasets/temple/")
+
     self.spec = Spec(self.max)
-    self.ground_truth = self.simulation.truth()
+    self.ground_truth = get_truth("../datasets/temple/"+"truth.png",self.HEIGHT,self.WIDTH)
     self.top = 0
 
   def step(self, action):
@@ -127,13 +156,12 @@ class CustomEnv(gym.Env):
     self.simulation.simulate(action)
     observation = self.simulation.observe()
     new = MultiSSIM(self.simulation.render(), self.ground_truth)
-    #if self.top<new:
-    #    print(new)
-    #    self.top = new
+    if self.top<new:
+        print(old)
+        self.top = new
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count
-    
-    return observation,reward.detach().numpy(),done, {}
+    return observation,reward.detach().numpy(),done, {"msssim":new.detach()}
 
     
   def reset(self):
@@ -141,7 +169,7 @@ class CustomEnv(gym.Env):
         img= self.simulation.indexes.unsqueeze(-1)
         norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
         save(self.simulation.out(norm),"tmp/"+str(random.random())+".png")
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max)
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max,self.denoising)
     return self.simulation.observe()
     
   def render(self, mode='human', close=False):
@@ -150,4 +178,3 @@ class CustomEnv(gym.Env):
 def save(data,name):
     img= T.ToPILImage()(torch.Tensor(data).permute([2,0,1]))
     img.save(name)
-
