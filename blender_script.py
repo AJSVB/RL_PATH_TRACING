@@ -3,9 +3,8 @@ import time
 from random import randint
 
 nodes = bpy.context.scene.node_tree.nodes
-<<<<<<< HEAD
 render_layers = nodes.new('CompositorNodeRLayers')
-=======
+"""
 links = bpy.context.scene.node_tree.links
 render_layers = nodes.new('CompositorNodeRLayers')
 scene = bpy.context.scene
@@ -17,10 +16,10 @@ albedo_file_output.format.file_format = 'PNG'
 albedo_file_output.format.color_mode = 'RGB'
 albedo_file_output.format.color_depth = '16'
 links.new(render_layers.outputs["Image"], albedo_file_output.inputs[0])
->>>>>>> 871106149e093606bbe48f77649a95f9d8d48526
+"""
 
 for frame in range(scene.frame_start, scene.frame_start + 1):
-  for i in range(920,1000):
+  for i in range(1000,10000):
     bpy.context.scene.cycles.seed = i 
     scene.frame_set(frame)
     albedo_file_output.file_slots[0].path = '~/' + str(frame).zfill(4) + "-" + str(i).zfill(5)+ ".png" 
