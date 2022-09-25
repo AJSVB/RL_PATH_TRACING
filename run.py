@@ -23,7 +23,7 @@ def train_ppo_model():
             },
           'framework' :"torch",
 
-#"clip_param":.45,"decay":.97,"epsilon":.01, "grad_clip":4,"lambda":.925,"lr":.0001, "momentum":.5,"vf_loss_coeff":.81,"entropy_coeff":1e-3,
+"clip_param":.45,"decay":.97,"epsilon":.01, "grad_clip":4,"lambda":.925,"lr":.0001, "momentum":.5,"vf_loss_coeff":.81,"entropy_coeff":1e-3,
 "num_envs_per_worker":1,
         'num_workers':4,
 #"evaluation_num_workers":1,

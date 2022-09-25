@@ -74,7 +74,6 @@ class PhysicSimulation:
         self.reset()
         self.updated=False
         self.denoising=denoising
-        self.prob_sampling=prob_sampling
     def reset(self):
         self.permutation = torch.randperm(self.max)
         self.observations = self.dataset[:,:,self.permutation[0]] #torch.zeros(self.dataset.shape[:2])
@@ -85,37 +84,29 @@ class PhysicSimulation:
         self.updated=False
     def simulate(self, x):
         x=x.flatten()
+        max = np.quantile(x,1-self.sppps)
+        idx = np.where(x>=max)[0]
+        indexes = self.indexes[idx] 
+        self.indexes[idx]= indexes+1
+        temp = self.dataset[idx,:,self.permutation[self.count]]
+        indexes = indexes.unsqueeze(1).repeat(1,3)
+        self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1)
+        self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
+        self.count+=1
+        """
+        max = np.quantile(x,1-self.sppps/3)
+        idx = np.where(x>=max)[0]
+        indexes = self.indexes[idx] 
+        self.indexes[idx]= indexes+1
+        temp = self.dataset[idx,:,self.permutation[self.count]]
+        indexes = indexes.unsqueeze(1).repeat(1,3)
+        self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1)
+        self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
+        self.count+=1
+        """
 
-        if not self.prob_sampling:
-         max = np.quantile(x,1-self.sppps)
-         idx = np.where(x>=max)[0]
-         indexes = self.indexes[idx] 
-         self.indexes[idx]= indexes+1
-         temp = self.dataset[idx,:,self.permutation[self.count]]
-         indexes = indexes.unsqueeze(1).repeat(1,3)
-         self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1)
-         self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
-         self.count+=1
-        else:
-         import iteround
-         x=x**20
-         n=self.HEIGHT*self.WIDTH*self.sppps
-         print(np.mean(x)) 
-         x=x.astype(np.float64)
-         x=x/np.sum(x)*n
-         x=iteround.saferound(x, 0)
-         x=np.array(x).astype(int)
-         ma = np.max(x)
-         print(ma)
-         for i in range(ma):
-          idx = np.where(x>i)[0]
-          indexes = self.indexes[idx] 
-          self.indexes[idx]= indexes+1
-          temp = self.dataset[idx,:,self.permutation[self.count]]
-          indexes = indexes.unsqueeze(1).repeat(1,3)
-          self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1)
-          self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
-          self.count+=1
+
+
 
         self.updated=False
 
@@ -166,13 +157,13 @@ class CustomEnv(gym.Env):
     self.HEIGHT = 720 
     self.WIDTH =   1280
     self.max = int(self.spp/self.sppps) - int(1/self.sppps)+1 #
-    self.prob_sampling=env_config["prob_sampling"]
-    if self.prob_sampling:
-        self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max*10)]
-    else:
-        self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
+
+    self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max*2)]
+
     self.add = load_additional(self.path,1,self.HEIGHT,self.WIDTH)
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.prob_sampling)
+
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max*2,self.denoising)
+
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
                     (self.HEIGHT,self.WIDTH,6), dtype=np.float16) #MACHINE PRECISION
