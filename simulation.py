@@ -14,14 +14,17 @@ import denoising
 from filelock import FileLock 
 import os
 
-def norm(a):
-    return a*0
+def norm(a,denoising):
+    if not denoising:
+        return a*0
     return (a-np.min(a))/(np.max(a)-np.min(a))
 
-def ground_truth(path,number_images=1000,frame_number=1,HEIGHT=720,WIDTH=1280,name=""):
-    dataset = torch.cat([get_ith_image(path,i,frame_number,HEIGHT,WIDTH) for i in range(number_images)],0)
-    dataset = dataset.mean(0)
-    img= T.ToPILImage()(dataset)
+def ground_truth(path,number_images=10000,frame_number=1,HEIGHT=720,WIDTH=1280,name=""):
+    dataset = get_ith_image(path,0,frame_number,HEIGHT,WIDTH) 
+    print(dataset.shape)    
+    for i in range(1,number_images):
+      dataset = (dataset*i + get_ith_image(path,i,frame_number,HEIGHT,WIDTH) )/(i+1.)
+    img= T.ToPILImage()(dataset.squeeze(0))
     img.save(path+name)
 
 def get_truth(path,HEIGHT=480,WIDTH=640):
@@ -59,7 +62,7 @@ def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
     return dataset[-HEIGHT:,-WIDTH:]
 
 class PhysicSimulation:
-    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,HEIGHT=480,WIDTH=730,max=10,denoising=True):
+    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,HEIGHT=480,WIDTH=730,max=10,denoising=True,prob_sampling=True):
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.dataset = cached(list)
@@ -71,6 +74,7 @@ class PhysicSimulation:
         self.reset()
         self.updated=False
         self.denoising=denoising
+        self.prob_sampling=prob_sampling
     def reset(self):
         self.permutation = torch.randperm(self.max)
         self.observations = self.dataset[:,:,self.permutation[0]] #torch.zeros(self.dataset.shape[:2])
@@ -81,15 +85,38 @@ class PhysicSimulation:
         self.updated=False
     def simulate(self, x):
         x=x.flatten()
-        max = np.quantile(x,1-self.sppps)
-        idx = np.where(x>=max)[0]
-        indexes = self.indexes[idx] 
-        self.indexes[idx]= indexes+1
-        temp = self.dataset[idx,:,self.permutation[self.count]]
-        indexes = indexes.unsqueeze(1).repeat(1,3)
-        self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1)
-        self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
-        self.count+=1
+
+        if not self.prob_sampling:
+         max = np.quantile(x,1-self.sppps)
+         idx = np.where(x>=max)[0]
+         indexes = self.indexes[idx] 
+         self.indexes[idx]= indexes+1
+         temp = self.dataset[idx,:,self.permutation[self.count]]
+         indexes = indexes.unsqueeze(1).repeat(1,3)
+         self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1)
+         self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
+         self.count+=1
+        else:
+         import iteround
+         x=x**20
+         n=self.HEIGHT*self.WIDTH*self.sppps
+         print(np.mean(x)) 
+         x=x.astype(np.float64)
+         x=x/np.sum(x)*n
+         x=iteround.saferound(x, 0)
+         x=np.array(x).astype(int)
+         ma = np.max(x)
+         print(ma)
+         for i in range(ma):
+          idx = np.where(x>i)[0]
+          indexes = self.indexes[idx] 
+          self.indexes[idx]= indexes+1
+          temp = self.dataset[idx,:,self.permutation[self.count]]
+          indexes = indexes.unsqueeze(1).repeat(1,3)
+          self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1)
+          self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
+          self.count+=1
+
         self.updated=False
 
     def out(self,data):
@@ -109,7 +136,7 @@ class PhysicSimulation:
     def observe(self):
         rendersquared = self.observations**2
         temp = np.concatenate((self.out(self.observations.mean(-1).unsqueeze(-1)),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)            
-        return np.concatenate((temp,self.add, np.expand_dims(norm((self.out(self.observations)-self.render()).mean(-1)),-1)   ),axis=-1,dtype=np.float16)
+        return np.concatenate((temp,self.add, np.expand_dims(norm((self.out(self.observations)-self.render()).mean(-1),self.denoising),-1)   ),axis=-1,dtype=np.float16)
 
 
 class Spec:
@@ -139,9 +166,13 @@ class CustomEnv(gym.Env):
     self.HEIGHT = 720 
     self.WIDTH =   1280
     self.max = int(self.spp/self.sppps) - int(1/self.sppps)+1 #
-    self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
+    self.prob_sampling=env_config["prob_sampling"]
+    if self.prob_sampling:
+        self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max*10)]
+    else:
+        self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
     self.add = load_additional(self.path,1,self.HEIGHT,self.WIDTH)
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max,self.denoising)
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.prob_sampling)
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
                     (self.HEIGHT,self.WIDTH,6), dtype=np.float16) #MACHINE PRECISION
@@ -159,16 +190,19 @@ class CustomEnv(gym.Env):
     if self.top<new:
         print(old)
         self.top = new
+        if self.top>.98:
+          self.insight()
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count
     return observation,reward.detach().numpy(),done, {"msssim":new.detach()}
 
+  def insight(self): 
+    img= self.simulation.indexes.unsqueeze(-1)
+    norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
+    save(self.simulation.out(norm),"tmp/"+str(random.random())+".png")
+
     
   def reset(self):
-    if random.random()>.99:
-        img= self.simulation.indexes.unsqueeze(-1)
-        norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
-        save(self.simulation.out(norm),"tmp/"+str(random.random())+".png")
     self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max,self.denoising)
     return self.simulation.observe()
     
