@@ -40,6 +40,7 @@ class FCN(TorchModelV2, nn.Module):
                                         [2,[7,7], [1,1]],
                                         [2,[7,7], [1,1]],
                                         [2,[7,7], [1,1]],
+                                        [2,[7,7], [1,1]],
                                         [2,[7,7], [1,1]]]
 
         TorchModelV2.__init__(
@@ -48,7 +49,7 @@ class FCN(TorchModelV2, nn.Module):
         nn.Module.__init__(self)
 
         activation = "tanh" #self.model_config.get("conv_activation")
-        filters = self.model_config["conv_filters"]
+        filters = model_config["conv_filters"]
         
         # Post FC net config.
         post_fcnet_hiddens = model_config.get("post_fcnet_hiddens", [])
@@ -82,8 +83,8 @@ class FCN(TorchModelV2, nn.Module):
             in_size = out_size
 
        # print(num_outputs)
-        self._convs = nn.Sequential(*layers)
-
+        self._convs = nn.Sequential(*layers[:-1])
+        self.head = layers[-1]
         
         self._value_branch = SlimFC(
                 int(out_size[0]*out_size[1]*2), 1, initializer=normc_initializer(0.01), activation_fn=None
@@ -97,14 +98,14 @@ class FCN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-
         self._features = input_dict["obs"].float()
         self._features = self._features.permute(0, 3, 1, 2)
         conv_out = self._convs(self._features)
+        out=self.head(conv_out)
         s=conv_out.shape
         conv_out = conv_out.reshape(s[0], 1, -1).permute(0,2,1).squeeze(-1)
         self._features = conv_out 
-        return conv_out, state
+        return out.reshape(s[0], 1, -1).permute(0,2,1).squeeze(-1), state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:
