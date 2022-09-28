@@ -182,9 +182,9 @@ class CustomEnv(gym.Env):
     observation = self.simulation.observe()
     new = MultiSSIM(self.simulation.render(), self.ground_truth)
     if self.top<new:
-        print(old)
+        print(new)
         self.top = new
-        if self.top>.98:
+        if self.top>.987:
           self.insight()
     reward = - old + new
     print(self.spec.max_episode_steps)

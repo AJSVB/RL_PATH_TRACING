@@ -35,13 +35,16 @@ class FCN(TorchModelV2, nn.Module):
         name: str,
     ):
 
-        
+        c=9
         model_config["conv_filters"] = [
-                                        [2,[7,7], [1,1]],
-                                        [2,[7,7], [1,1]],
-                                        [2,[7,7], [1,1]],
-                                        [2,[7,7], [1,1]],
-                                        [2,[7,7], [1,1]]]
+                                        [2,[c,c], [1,1]],
+                                        [2,[c,c], [1,1]],
+                                        [2,[c,c], [1,1]],
+                                        [2,[c,c], [1,1]],
+#                                        [2,[c,c], [1,1]],
+#                                        [2,[c,c], [1,1]],
+                                        [2,[c,c], [1,1]],
+                                        [2,[c,c], [1,1]]]
 
         TorchModelV2.__init__(
             self, obs_space, action_space, num_outputs, model_config, name
@@ -84,7 +87,8 @@ class FCN(TorchModelV2, nn.Module):
 
        # print(num_outputs)
         self._convs = nn.Sequential(*layers[:-1])
-        self.head = layers[-1]
+        self.head = nn.Sequential(*layers[-1:0])
+#        self.head_value = nn.Sequential(*layers[-2:])
         
         self._value_branch = SlimFC(
                 int(out_size[0]*out_size[1]*2), 1, initializer=normc_initializer(0.01), activation_fn=None
@@ -102,15 +106,16 @@ class FCN(TorchModelV2, nn.Module):
         self._features = self._features.permute(0, 3, 1, 2)
         conv_out = self._convs(self._features)
         out=self.head(conv_out)
-        s=conv_out.shape
-        conv_out = conv_out.reshape(s[0], 1, -1).permute(0,2,1).squeeze(-1)
         self._features = conv_out 
-        return out.reshape(s[0], 1, -1).permute(0,2,1).squeeze(-1), state
+        return out.reshape(out.shape[0], 1, -1).permute(0,2,1).squeeze(-1), state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:
         assert self._features is not None, "must call forward() first"
-        return self._value_branch(self._features.squeeze(-1)).squeeze(1)
+        tmp = self._features
+        tmp=tmp.reshape(tmp.shape[0], 1, -1).permute(0,2,1).squeeze(-1)
+
+        return self._value_branch(tmp.squeeze(-1)).squeeze(1)
 
 
     
