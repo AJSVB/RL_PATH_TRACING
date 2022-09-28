@@ -35,12 +35,12 @@ class FCN(TorchModelV2, nn.Module):
         name: str,
     ):
 
-        c=9
+        c=7
         model_config["conv_filters"] = [
-                                        [2,[c,c], [1,1]],
-                                        [2,[c,c], [1,1]],
-                                        [2,[c,c], [1,1]],
-                                        [2,[c,c], [1,1]],
+                                        [3,[c,c], [1,1]],
+                                        [3,[c,c], [1,1]],
+#                                        [2,[c,c], [1,1]],
+#                                        [2,[c,c], [1,1]],
 #                                        [2,[c,c], [1,1]],
 #                                        [2,[c,c], [1,1]],
                                         [2,[c,c], [1,1]],
@@ -86,9 +86,9 @@ class FCN(TorchModelV2, nn.Module):
             in_size = out_size
 
        # print(num_outputs)
-        self._convs = nn.Sequential(*layers[:-1])
+        self._convs = nn.Sequential(*layers[:-2])
         self.head = nn.Sequential(*layers[-1:0])
-#        self.head_value = nn.Sequential(*layers[-2:])
+        self.head_value = nn.Sequential(*layers[-2:-1])
         
         self._value_branch = SlimFC(
                 int(out_size[0]*out_size[1]*2), 1, initializer=normc_initializer(0.01), activation_fn=None
@@ -112,7 +112,7 @@ class FCN(TorchModelV2, nn.Module):
     @override(TorchModelV2)
     def value_function(self) -> TensorType:
         assert self._features is not None, "must call forward() first"
-        tmp = self._features
+        tmp = self.head_value(self._features)
         tmp=tmp.reshape(tmp.shape[0], 1, -1).permute(0,2,1).squeeze(-1)
 
         return self._value_branch(tmp.squeeze(-1)).squeeze(1)
@@ -121,4 +121,3 @@ class FCN(TorchModelV2, nn.Module):
     
 from ray.rllib.models import ModelCatalog
 ModelCatalog.register_custom_model("FCN", FCN)
-
