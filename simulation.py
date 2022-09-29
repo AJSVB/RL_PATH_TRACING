@@ -119,7 +119,7 @@ class PhysicSimulation:
     def render(self):        
       if self.denoising:
         if not self.updated:
-          with FileLock('tmp/0.pfm.lock'):
+          with FileLock('/home/ascardigli/RL_PATH_TRACING/tmp/0.pfm.lock'):
             self.denoised= denoising.denoise(self.out(self.observations),str(0))
           self.updated=True
         return self.denoised
@@ -170,10 +170,10 @@ class CustomEnv(gym.Env):
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
                     (self.HEIGHT,self.WIDTH,6), dtype=np.float16) #MACHINE PRECISION
-    denoising.initialise("../datasets/temple/")
+    denoising.initialise("/home/ascardigli/datasets/temple/")
 
     self.spec = Spec(self.max)
-    self.ground_truth = get_truth("../datasets/temple/"+"truth.png",self.HEIGHT,self.WIDTH)
+    self.ground_truth = get_truth("/home/ascardigli/datasets/temple/"+"truth.png",self.HEIGHT,self.WIDTH)
     self.top = 0
 
   def step(self, action):
@@ -187,8 +187,8 @@ class CustomEnv(gym.Env):
         if self.top>.987:
           self.insight()
     reward = - old + new
-    print(self.spec.max_episode_steps)
-    print(self.simulation.count)
+#    print(self.spec.max_episode_steps)
+#    print(self.simulation.count)
     done = self.spec.max_episode_steps*CST <= self.simulation.count
     return observation,reward.detach().numpy(),done, {"msssim":new.detach()}
 
@@ -197,7 +197,7 @@ class CustomEnv(gym.Env):
     norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
     te=str(random.random())
     print(te)
-    save(self.simulation.out(norm),"tmp/"+te+".png")
+    save(self.simulation.out(norm),"/home/ascardigli/RL_PATH_TRACING/tmp/"+te+".png")
 
     
   def reset(self):

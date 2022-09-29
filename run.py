@@ -28,7 +28,6 @@ def train_ppo_model():
         'num_workers':1,
 #"evaluation_num_workers":1,
 #'num_cpus_per_worker':10,
-
         "lambda": 0.0,
 #        "gamma": 0.0,
 #        "kl_coeff":0.0,
