@@ -1,3 +1,4 @@
+
 import fcn
 import ray
 import simulation 
@@ -27,6 +28,12 @@ def train_ppo_model():
         'num_workers':1,
 #"evaluation_num_workers":1,
 #'num_cpus_per_worker':10,
+
+        "lambda": 0.0,
+#        "gamma": 0.0,
+#        "kl_coeff":0.0,
+
+
 'num_gpus_per_worker':4,
 "evaluation_interval":5,
 "rollout_fragment_length":20, #was20
