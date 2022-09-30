@@ -21,8 +21,8 @@ if True:
     hyperopt_search = HyperOptSearch()
 
     scheduler = ASHAScheduler(
-        max_t=20,
-        grace_period=5,
+        max_t=10,
+        grace_period=3,
         reduction_factor=2,
     )
 

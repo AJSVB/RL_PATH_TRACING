@@ -1,4 +1,4 @@
-
+import GPUtil
 import torch.nn.functional as F
 from torch.utils.data import Dataset
 from PIL import Image
@@ -34,6 +34,8 @@ class FCN(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
+        print("init")
+        GPUtil.showUtilization()
 
         c=7
         model_config["conv_filters"] = [
@@ -68,7 +70,8 @@ class FCN(TorchModelV2, nn.Module):
 
         layers = []
         (w, h, in_channels) = obs_space.shape
-
+        print("nothing happend")
+        GPUtil.showUtilization()
         in_size = [w, h]
         for out_channels, kernel, stride in filters:
             padding, out_size = same_padding(in_size, kernel, stride)
@@ -85,15 +88,16 @@ class FCN(TorchModelV2, nn.Module):
             in_channels = out_channels
             in_size = out_size
 
-       # print(num_outputs)
+        GPUtil.showUtilization()
         self._convs = nn.Sequential(*layers[:-2])
         self.head = nn.Sequential(*layers[-1:0])
         self.head_value = nn.Sequential(*layers[-2:-1])
-        
+        GPUtil.showUtilization()
         self._value_branch = SlimFC(
                 int(out_size[0]*out_size[1]*2), 1, initializer=normc_initializer(0.01), activation_fn=None
             )
         self._features = None
+        GPUtil.showUtilization()
 
     @override(TorchModelV2)
     def forward(
@@ -102,6 +106,8 @@ class FCN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
+        print("forward")
+        GPUtil.showUtilization()
         self._features = input_dict["obs"].float()
         self._features = self._features.permute(0, 3, 1, 2)
         conv_out = self._convs(self._features)
@@ -114,7 +120,6 @@ class FCN(TorchModelV2, nn.Module):
         assert self._features is not None, "must call forward() first"
         tmp = self.head_value(self._features)
         tmp=tmp.reshape(tmp.shape[0], 1, -1).permute(0,2,1).squeeze(-1)
-
         return self._value_branch(tmp.squeeze(-1)).squeeze(1)
 
 

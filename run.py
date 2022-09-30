@@ -23,17 +23,18 @@ def train_ppo_model():
             },
           'framework' :"torch",
 
-#"clip_param":.45,"decay":.97,"epsilon":.01, "grad_clip":4,"lambda":.925,"lr":.0001, "momentum":.5,"vf_loss_coeff":.81,"entropy_coeff":1e-3,
-"num_envs_per_worker":2,
+
+"vf_loss_coeff":.3,"momentum":.7,"lr":.1,"lambda":.49,"kl_coeff":0,"grad_clip":400,"gamma":1,"epsilon":.4,"entropy_coeff":1e-5,"decay":.98,"clip_param":.1, #gamma was .47 but I believe 1 makes more sense
+
+
+
+"num_envs_per_worker":1,
         'num_workers':1,
 #"evaluation_num_workers":1,
 #'num_cpus_per_worker':10,
-        "lambda": 0.0,
-#        "gamma": 0.0,
-#        "kl_coeff":0.0,
 
 
-'num_gpus_per_worker':4,
+'num_gpus_per_worker':3,
 "evaluation_interval":5,
 "rollout_fragment_length":20, #was20
 "train_batch_size":20,
@@ -43,7 +44,7 @@ def train_ppo_model():
 }
 })
     # Train for one iteration.
-    for _ in range(10):
+    for _ in range(30):
          algo.train()
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.

@@ -56,15 +56,26 @@ def get_add(path,detail):
     x = TF.to_tensor(image)
     if x[0,:].equal(x[1,:]):
         x = x[0:1,:]
-    return x.mean(0).unsqueeze(0)
+    return x
 
 def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
-    dataset = torch.cat([get_add(path,a) for a in  ["Normal","DiffCol"]])
+    dataset = torch.cat([get_add(path,a).mean(0).unsqueeze(0) for a in  ["Normal","DiffCol"]])
     dataset = dataset.permute([1,2,0])
     return dataset[-HEIGHT:,-WIDTH:]
 
+
+def load_albedo(path,frame_number=1,HEIGHT=480,WIDTH=640):
+    dataset = get_add(path,"DiffCol")
+    dataset = dataset.permute([1,2,0])
+    return dataset[-HEIGHT:,-WIDTH:]
+
+
+
+
+
 class PhysicSimulation:
-    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,HEIGHT=480,WIDTH=730,max=10,denoising=True,prob_sampling=True):
+
+    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,albedo=None,HEIGHT=480,WIDTH=730,max=10,denoising=True,prob_sampling=True):
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.dataset = cached(list)
@@ -72,17 +83,19 @@ class PhysicSimulation:
         self.sppps = sppps
         self.dataset=self.dataset.view( -1, *self.dataset.shape[2:])
         self.add = add
+        self.albedo=albedo.reshape(-1,3)
         self.max = max
         self.reset()
         self.updated=False
         self.denoising=denoising
     def reset(self):
         self.permutation = torch.randperm(self.max)
-        self.observations = self.dataset[:,:,self.permutation[0]] #torch.zeros(self.dataset.shape[:2])
+        self.observations = self.albedo #self.dataset[:,:,self.permutation[0]] #torch.zeros(self.dataset.shape[:2])
+ 
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
-        self.count = 1*CST #0
+        self.count = 0 #CST
         self.updated=False
     def simulate(self, x):
         x=x.flatten()
@@ -92,7 +105,7 @@ class PhysicSimulation:
         self.indexes[idx]= indexes+1
         temp = self.dataset[idx,:,self.permutation[self.count]]
         indexes = indexes.unsqueeze(1).repeat(1,3)
-        self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1)
+        self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1) #TODO biased or unbiased addition
         self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
         self.count+=1
 
@@ -103,7 +116,7 @@ class PhysicSimulation:
         self.indexes[idx]= indexes+1
         temp = self.dataset[idx,:,self.permutation[self.count]]
         indexes = indexes.unsqueeze(1).repeat(1,3)
-        self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1)
+        self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1) #TODO
         self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
         self.count+=1
            
@@ -159,13 +172,14 @@ class CustomEnv(gym.Env):
     self.denoising = env_config['denoising']
     self.HEIGHT = 720 
     self.WIDTH =   1280
-    self.max = int(self.spp/self.sppps) - int(1/self.sppps)+1 #
+    self.max = int(self.spp/self.sppps) #- int(1/self.sppps)+1 #
 
     self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max*CST)]
 
     self.add = load_additional(self.path,1,self.HEIGHT,self.WIDTH)
+    self.albedo = load_albedo(self.path,1,self.HEIGHT,self.WIDTH)
 
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max*CST,self.denoising)
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max*CST,self.denoising)
 
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
@@ -184,12 +198,13 @@ class CustomEnv(gym.Env):
     if self.top<new:
         print(new)
         self.top = new
-        if self.top>.987:
+        if self.top>.99:
           self.insight()
     reward = - old + new
 #    print(self.spec.max_episode_steps)
 #    print(self.simulation.count)
     done = self.spec.max_episode_steps*CST <= self.simulation.count
+    print(self.simulation.count)
     return observation,reward.detach().numpy(),done, {"msssim":new.detach()}
 
   def insight(self): 
@@ -201,7 +216,7 @@ class CustomEnv(gym.Env):
 
     
   def reset(self):
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.HEIGHT,self.WIDTH,self.max*2,self.denoising)
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max*2,self.denoising)
     return self.simulation.observe()
     
   def render(self, mode='human', close=False):
