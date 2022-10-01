@@ -143,7 +143,7 @@ class PhysicSimulation:
     def observe(self):
         rendersquared = self.observations**2
         temp = np.concatenate((self.out(self.observations.mean(-1).unsqueeze(-1)),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)            
-        return np.concatenate((temp,self.add, np.expand_dims(norm((self.out(self.observations)-self.render()).mean(-1),self.denoising),-1)   ),axis=-1,dtype=np.float32).transpose(2,0,1)
+        return np.concatenate((temp,self.add, np.expand_dims(norm((self.out(self.observations)-self.render()).mean(-1),self.denoising),-1)   ),axis=-1,dtype=np.float16)
 
 
 class Spec:
@@ -183,7 +183,7 @@ class CustomEnv(gym.Env):
 
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (6,self.HEIGHT,self.WIDTH), dtype=np.float32) #MACHINE PRECISION
+                    (self.HEIGHT,self.WIDTH,6), dtype=np.float16) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
 
     self.spec = Spec(self.max)
