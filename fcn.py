@@ -92,6 +92,27 @@ class FCN(TorchModelV2, nn.Module):
         self._features = None
         GPUtil.showUtilization()
 
+    def f(
+        self,
+        input_dict: Dict[str, TensorType],
+        state: List[TensorType],
+        seq_lens: TensorType,
+    ) -> (TensorType, List[TensorType]):
+
+        for i in range(int(input_dict["obs"].shape[0]/2)):
+         x = input_dict["obs"][2*i:2*(i+1)]
+         x = self._convs(x)
+         tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
+         o=self.head(x)
+         if i==0:
+          self.tmp = tmp
+          out=o
+         else:
+          out=torch.cat((out,o),0)
+          self.tmp=torch.cat((self.tmp,tmp),0)
+        return out
+
+
     @override(TorchModelV2)
     def forward(
         self,
@@ -100,25 +121,15 @@ class FCN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
 
-        print(input_dict["obs"].shape)
 
-        x = input_dict["obs"][0:2]
-        x = self._convs(x)
-        self.tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
-        o=self.head(x)
+      if input_dict["obs"].shape[0]==8:
+       with torch.no_grad():
+          out=self.f(input_dict,state,seq_lens)
+      else:
+          out=self.f(input_dict,state,seq_lens)
 
-        GPUtil.showUtilization()
-
-
-        if input_dict["obs"].shape[0]==8:
-         o=o.detach()
-         self.tmp=self.tmp.detach()
-         o=o.tile((4,1,1,1))
-         print(o.shape)
-         print(self.tmp.shape)
-         self.tmp=self.tmp.tile((4))
-
-        return o.reshape(input_dict["obs"].shape[0], -1), state
+      GPUtil.showUtilization()
+      return out.reshape(input_dict["obs"].shape[0], -1), state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:
