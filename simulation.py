@@ -79,7 +79,6 @@ class PhysicSimulation:
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.dataset = cached(list)
-#        self.dataset=aggregate_by_pixel(path,self.max,frame_number,self.HEIGHT,self.WIDTH)
         self.sppps = sppps
         self.dataset=self.dataset.view( -1, *self.dataset.shape[2:])
         self.add = add
@@ -90,12 +89,12 @@ class PhysicSimulation:
         self.denoising=denoising
     def reset(self):
         self.permutation = torch.randperm(self.max)
-        self.observations = self.albedo #self.dataset[:,:,self.permutation[0]] #torch.zeros(self.dataset.shape[:2])
+        self.observations = self.dataset[:,:,self.permutation[0]] #self.albedo #torch.zeros(self.dataset.shape[:2])
  
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
-        self.count = 0 #CST
+        self.count = CST #
         self.updated=False
     def simulate(self, x):
         x=x.flatten()
@@ -143,7 +142,7 @@ class PhysicSimulation:
     def observe(self):
         rendersquared = self.observations**2
         temp = np.concatenate((self.out(self.observations.mean(-1).unsqueeze(-1)),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)            
-        return np.concatenate((temp,self.add, np.expand_dims(norm((self.out(self.observations)-self.render()).mean(-1),self.denoising),-1)   ),axis=-1,dtype=np.float16)
+        return np.concatenate((temp,self.add, np.expand_dims(norm((self.out(self.observations)-self.render()).mean(-1),self.denoising),-1)   ),axis=-1,dtype=np.float32).transpose(2,0,1)
 
 
 class Spec:
@@ -172,7 +171,7 @@ class CustomEnv(gym.Env):
     self.denoising = env_config['denoising']
     self.HEIGHT = 720 
     self.WIDTH =   1280
-    self.max = int(self.spp/self.sppps) #- int(1/self.sppps)+1 #
+    self.max = int(self.spp/self.sppps) - int(1/self.sppps)+1 #
 
     self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max*CST)]
 
@@ -183,7 +182,7 @@ class CustomEnv(gym.Env):
 
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (self.HEIGHT,self.WIDTH,6), dtype=np.float16) #MACHINE PRECISION
+                    (6,self.HEIGHT,self.WIDTH), dtype=np.float16) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
 
     self.spec = Spec(self.max)

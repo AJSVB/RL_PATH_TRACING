@@ -28,13 +28,13 @@ def train_ppo_model():
 
 
 
-"num_envs_per_worker":1,
+"num_envs_per_worker":2,
         'num_workers':1,
 #"evaluation_num_workers":1,
 #'num_cpus_per_worker':10,
 
 
-'num_gpus_per_worker':3,
+'num_gpus_per_worker':4,
 "evaluation_interval":5,
 "rollout_fragment_length":20, #was20
 "train_batch_size":20,

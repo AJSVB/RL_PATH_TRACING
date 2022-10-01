@@ -45,7 +45,7 @@ class FCN(TorchModelV2, nn.Module):
 #                                        [2,[c,c], [1,1]],
 #                                        [2,[c,c], [1,1]],
 #                                        [2,[c,c], [1,1]],
-                                        [2,[c,c], [1,1]],
+                                        [1,[c,c], [1,1]],
                                         [2,[c,c], [1,1]]]
 
         TorchModelV2.__init__(
@@ -69,7 +69,7 @@ class FCN(TorchModelV2, nn.Module):
         self._logits = None
 
         layers = []
-        (w, h, in_channels) = obs_space.shape
+        (in_channels,w, h) = obs_space.shape
         print("nothing happend")
         GPUtil.showUtilization()
         in_size = [w, h]
@@ -106,10 +106,9 @@ class FCN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-        print("forward")
-        GPUtil.showUtilization()
+#        GPUtil.showUtilization()
         self._features = input_dict["obs"].float()
-        self._features = self._features.permute(0, 3, 1, 2)
+        self._features = self._features
         conv_out = self._convs(self._features)
         out=self.head(conv_out)
         self._features = conv_out 
@@ -118,9 +117,8 @@ class FCN(TorchModelV2, nn.Module):
     @override(TorchModelV2)
     def value_function(self) -> TensorType:
         assert self._features is not None, "must call forward() first"
-        tmp = self.head_value(self._features)
-        tmp=tmp.reshape(tmp.shape[0], 1, -1).permute(0,2,1).squeeze(-1)
-        return self._value_branch(tmp.squeeze(-1)).squeeze(1)
+        tmp = self.head_value(self._features).reshape(*self._features.shape[:1],-1)
+        return tmp.mean(1)
 
 
     
