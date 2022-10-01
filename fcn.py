@@ -17,6 +17,9 @@ from ray.rllib.models.torch.misc import (
     SlimConv2d,
     SlimFC,
 )
+
+from torch.nn import Conv2d
+
 from ray.rllib.models.utils import get_activation_fn, get_filter_config
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils.framework import try_import_torch
@@ -39,9 +42,6 @@ class FCN(TorchModelV2, nn.Module):
                                         [3,[c,c], [1,1]],
                                         [3,[c,c], [1,1]],
                                         [2,[c,c], [1,1]],
-#                                        [2,[c,c], [1,1]],
-#                                        [2,[c,c], [1,1]],
-#                                        [2,[c,c], [1,1]],
                                         [1,[c,c], [1,1]],
                                         [2,[c,c], [1,1]]]
 
@@ -52,18 +52,6 @@ class FCN(TorchModelV2, nn.Module):
 
         activation = "tanh" #self.model_config.get("conv_activation")
         filters = model_config["conv_filters"]
-        
-        # Post FC net config.
-        post_fcnet_hiddens = model_config.get("post_fcnet_hiddens", [])
-        post_fcnet_activation = get_activation_fn(
-            model_config.get("post_fcnet_activation"), framework="torch"
-        )
-
-        no_final_linear = True #self.model_config.get("no_final_linear")
-        vf_share_layers = True
-
-        self.last_layer_is_flattened = False
-        self._logits = None
 
         layers = []
         (in_channels,w, h) = obs_space.shape
@@ -71,25 +59,22 @@ class FCN(TorchModelV2, nn.Module):
         for out_channels, kernel, stride in filters:
             padding, out_size = same_padding(in_size, kernel, stride)
             layers.append(
-                SlimConv2d(
+                Conv2d(
                     in_channels,
                     out_channels,
                     kernel,
                     stride,
-                    padding,
-                    activation_fn=activation,
+                    padding[:2],
+                #    activation_fn=activation,
                 )
             )
+            layers.append(get_activation_fn(activation, "torch")())
             in_channels = out_channels
             in_size = out_size
 
-        self._convs = nn.Sequential(*layers[:-2])
-        self.head = nn.Sequential(*layers[-1:0])
-        self.head_value = nn.Sequential(*layers[-2:-1])
-        self._value_branch = SlimFC(
-                int(out_size[0]*out_size[1]*2), 1, initializer=normc_initializer(0.01), activation_fn=None
-            )
-        self._features = None
+        self._convs = nn.Sequential(*layers[:-4])
+        self.head = nn.Sequential(*layers[-2:0])
+        self.head_value = nn.Sequential(*layers[-4:-2])
         GPUtil.showUtilization()
 
     def f(
@@ -99,6 +84,7 @@ class FCN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
 
+        print(input_dict["obs"].shape)
         for i in range(int(input_dict["obs"].shape[0]/2)):
          x = input_dict["obs"][2*i:2*(i+1)]
          x = self._convs(x)
