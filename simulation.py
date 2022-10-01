@@ -182,7 +182,7 @@ class CustomEnv(gym.Env):
 
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (6,self.HEIGHT,self.WIDTH), dtype=np.float16) #MACHINE PRECISION
+                    (6,self.HEIGHT,self.WIDTH), dtype=np.float32) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
 
     self.spec = Spec(self.max)

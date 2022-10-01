@@ -34,10 +34,7 @@ class FCN(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
-        print("init")
-        GPUtil.showUtilization()
-
-        c=7
+        c=21
         model_config["conv_filters"] = [
                                         [3,[c,c], [1,1]],
                                         [3,[c,c], [1,1]],
@@ -70,8 +67,6 @@ class FCN(TorchModelV2, nn.Module):
 
         layers = []
         (in_channels,w, h) = obs_space.shape
-        print("nothing happend")
-        GPUtil.showUtilization()
         in_size = [w, h]
         for out_channels, kernel, stride in filters:
             padding, out_size = same_padding(in_size, kernel, stride)
@@ -88,11 +83,9 @@ class FCN(TorchModelV2, nn.Module):
             in_channels = out_channels
             in_size = out_size
 
-        GPUtil.showUtilization()
         self._convs = nn.Sequential(*layers[:-2])
         self.head = nn.Sequential(*layers[-1:0])
         self.head_value = nn.Sequential(*layers[-2:-1])
-        GPUtil.showUtilization()
         self._value_branch = SlimFC(
                 int(out_size[0]*out_size[1]*2), 1, initializer=normc_initializer(0.01), activation_fn=None
             )
@@ -106,19 +99,31 @@ class FCN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-#        GPUtil.showUtilization()
-        self._features = input_dict["obs"].float()
-        self._features = self._features
-        conv_out = self._convs(self._features)
-        out=self.head(conv_out)
-        self._features = conv_out 
-        return out.reshape(out.shape[0], 1, -1).permute(0,2,1).squeeze(-1), state
+
+        print(input_dict["obs"].shape)
+
+        x = input_dict["obs"][0:2]
+        x = self._convs(x)
+        self.tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
+        o=self.head(x)
+
+        GPUtil.showUtilization()
+
+
+        if input_dict["obs"].shape[0]==8:
+         o=o.detach()
+         self.tmp=self.tmp.detach()
+         o=o.tile((4,1,1,1))
+         print(o.shape)
+         print(self.tmp.shape)
+         self.tmp=self.tmp.tile((4))
+
+        return o.reshape(input_dict["obs"].shape[0], -1), state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:
-        assert self._features is not None, "must call forward() first"
-        tmp = self.head_value(self._features).reshape(*self._features.shape[:1],-1)
-        return tmp.mean(1)
+        assert self.tmp is not None, "must call forward() first"
+        return self.tmp
 
 
     
