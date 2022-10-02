@@ -77,15 +77,12 @@ class UNet(nn.Module):
         self.encoder     = Encoder(enc_chs)
         self.decoder     = Decoder(dec_chs)
         self.head        = nn.Conv2d(dec_chs[-1], num_class, 3,padding=1)
-        self.retain_dim  = retain_dim
 
     def forward(self, x):
         enc_ftrs = self.encoder(x)
         out      = self.decoder(enc_ftrs[::-1][0], enc_ftrs[::-1][1:])
         out      = self.head(out)
         print(out.shape)
-        if self.retain_dim:
-            out = F.interpolate(out, out_sz)
         return out
 from ray.rllib.models.utils import get_activation_fn, get_filter_config
 from ray.rllib.utils.annotations import override
@@ -153,7 +150,6 @@ class UN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
 
-        print(input_dict["obs"].shape)
         for i in range(int(input_dict["obs"].shape[0]/2)):
          x = input_dict["obs"][2*i:2*(i+1)]
          x = self._convs(x)

@@ -24,7 +24,7 @@ def train_ppo_model():
           'framework' :"torch",
 
 
-"vf_loss_coeff":.3,"momentum":.7,"lr":.1,"lambda":.49,"kl_coeff":0,"grad_clip":400,"gamma":1,"epsilon":.4,"entropy_coeff":1e-5,"decay":.98,"clip_param":.1, #gamma was .47 but I believe 1 makes more sense
+"vf_loss_coeff":.3,"momentum":.7,"lr":.1,"lambda":.49,"kl_coeff":0,"grad_clip":400,"gamma":1,"epsilon":.8,"entropy_coeff":1e-5,"decay":.98,"clip_param":.1, #gamma was .47 but I believe 1 makes more sense
 
 
 
