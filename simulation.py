@@ -59,7 +59,7 @@ def get_add(path,detail):
     return x
 
 def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
-    dataset = torch.cat([get_add(path,a).mean(0).unsqueeze(0) for a in  ["Normal","DiffCol"]])
+    dataset = torch.cat([get_add(path,a) for a in  ["Normal","DiffCol","Mist"]])
     dataset = dataset.permute([1,2,0])
     return dataset[-HEIGHT:,-WIDTH:]
 
@@ -141,8 +141,10 @@ class PhysicSimulation:
 
     def observe(self):
         rendersquared = self.observations**2
-        temp = np.concatenate((self.out(self.observations.mean(-1).unsqueeze(-1)),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared).mean(-1).unsqueeze(-1))),axis=-1)            
-        return np.concatenate((temp,self.add, np.expand_dims(norm((self.out(self.observations)-self.render()).mean(-1),self.denoising),-1)   ),axis=-1,dtype=np.float32).transpose(2,0,1)
+        temp = np.concatenate((self.out(self.observations),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared))),axis=-1)            
+        return np.concatenate((temp,self.add, \
+ norm((self.out(self.observations)-self.render()),self.denoising) \
+  ),axis=-1,dtype=np.float32).transpose(2,0,1)
 
 
 class Spec:
@@ -182,7 +184,7 @@ class CustomEnv(gym.Env):
 
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (6,self.HEIGHT,self.WIDTH), dtype=np.float32) #MACHINE PRECISION
+                    (17,self.HEIGHT,self.WIDTH), dtype=np.float32) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
 
     self.spec = Spec(self.max)
@@ -197,14 +199,15 @@ class CustomEnv(gym.Env):
     if self.top<new:
         print(new)
         self.top = new
-        if self.top>.99:
+        if self.top>.988:
           self.insight()
     reward = - old + new
 #    print(self.spec.max_episode_steps)
 #    print(self.simulation.count)
     done = self.spec.max_episode_steps*CST <= self.simulation.count
     print(self.simulation.count)
-    return observation,reward.detach().numpy(),done, {"msssim":new.detach()}
+
+    return observation,reward.detach().numpy(),done, {}
 
   def insight(self): 
     img= self.simulation.indexes.unsqueeze(-1)

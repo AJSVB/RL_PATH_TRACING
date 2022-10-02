@@ -34,17 +34,17 @@ def train_ppo_model():
 #'num_cpus_per_worker':10,
 
 
-'num_gpus_per_worker':4,
+'num_gpus_per_worker':1,
 ##"evaluation_interval":5,
 "rollout_fragment_length":8, #was20
 "train_batch_size":32,
 #"replay_buffer_num_slots":100,
   "model":{
-   "custom_model":"FCN"
+   "custom_model":"UN"
 }
 })
     # Train for one iteration.
-    for _ in range(30):
+    for _ in range(10):
          algo.train()
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.

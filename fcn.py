@@ -18,7 +18,7 @@ from ray.rllib.models.torch.misc import (
     SlimFC,
 )
 
-from torch.nn import Conv2d
+from torch import nn 
 
 from ray.rllib.models.utils import get_activation_fn, get_filter_config
 from ray.rllib.utils.annotations import override
@@ -37,10 +37,17 @@ class FCN(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
-        c=21
+        c=11
         model_config["conv_filters"] = [
-                                        [3,[c,c], [1,1]],
-                                        [3,[c,c], [1,1]],
+            #                            [12,[c,c], [1,1]],
+            #                            [12,[c,c], [1,1]],
+           #                             [12,[c,c], [1,1]],
+           #                             [12,[c,c], [1,1]],
+           #                             [12,[c,c], [1,1]],
+           #                             [10,[c,c], [1,1]],
+                                        [20,[c,c], [1,1]],
+                                        [14,[c,c], [1,1]],
+                                        [8,[c,c], [1,1]],
                                         [2,[c,c], [1,1]],
                                         [1,[c,c], [1,1]],
                                         [2,[c,c], [1,1]]]
@@ -50,7 +57,6 @@ class FCN(TorchModelV2, nn.Module):
         )
         nn.Module.__init__(self)
 
-        activation = "tanh" #self.model_config.get("conv_activation")
         filters = model_config["conv_filters"]
 
         layers = []
@@ -59,7 +65,7 @@ class FCN(TorchModelV2, nn.Module):
         for out_channels, kernel, stride in filters:
             padding, out_size = same_padding(in_size, kernel, stride)
             layers.append(
-                Conv2d(
+                nn.Conv2d(
                     in_channels,
                     out_channels,
                     kernel,
@@ -68,14 +74,14 @@ class FCN(TorchModelV2, nn.Module):
                 #    activation_fn=activation,
                 )
             )
-            layers.append(get_activation_fn(activation, "torch")())
+            layers.append(nn.Tanh())
             in_channels = out_channels
             in_size = out_size
 
         self._convs = nn.Sequential(*layers[:-4])
         self.head = nn.Sequential(*layers[-2:0])
         self.head_value = nn.Sequential(*layers[-4:-2])
-        GPUtil.showUtilization()
+        #GPUtil.showUtilization()
 
     def f(
         self,
@@ -84,7 +90,6 @@ class FCN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
 
-        print(input_dict["obs"].shape)
         for i in range(int(input_dict["obs"].shape[0]/2)):
          x = input_dict["obs"][2*i:2*(i+1)]
          x = self._convs(x)
@@ -114,7 +119,7 @@ class FCN(TorchModelV2, nn.Module):
       else:
           out=self.f(input_dict,state,seq_lens)
 
-      GPUtil.showUtilization()
+#      GPUtil.showUtilization()
       return out.reshape(input_dict["obs"].shape[0], -1), state
 
     @override(TorchModelV2)
