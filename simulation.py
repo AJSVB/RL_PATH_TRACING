@@ -19,7 +19,6 @@ def norm(a,denoising):
         return a*0
     return (a-np.min(a))/(np.max(a)-np.min(a))
 
-CST=2
 
 def ground_truth(path,number_images=10000,frame_number=1,HEIGHT=720,WIDTH=1280,name=""):
     dataset = get_ith_image(path,0,frame_number,HEIGHT,WIDTH) 
@@ -75,7 +74,9 @@ def load_albedo(path,frame_number=1,HEIGHT=480,WIDTH=640):
 
 class PhysicSimulation:
 
-    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,albedo=None,HEIGHT=480,WIDTH=730,max=10,denoising=True,prob_sampling=True):
+    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,albedo=None,HEIGHT=480,WIDTH=730,max=10,denoising=True,partition=None,CST=1):
+        self.partition = partition
+        self.CST=CST
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.dataset = cached(list)
@@ -94,34 +95,25 @@ class PhysicSimulation:
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
-        self.count = CST #
+        self.count = self.CST #
         self.updated=False
+    
+    def sample(self,x,quantile):
+        max = np.quantile(x,1-self.sppps*quantile)
+        idx = np.where(x>=max)[0]
+        indexes = self.indexes[idx] 
+        self.indexes[idx]= indexes+1
+        temp = self.dataset[idx,:,self.permutation[self.count]]
+        indexes = indexes.unsqueeze(1).repeat(1,3)
+        self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1) #TODO bia>
+        self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
+        self.count+=1
+
+
     def simulate(self, x):
         x=x.flatten()
-        max = np.quantile(x,1-self.sppps*9/10)
-        idx = np.where(x>=max)[0]
-        indexes = self.indexes[idx] 
-        self.indexes[idx]= indexes+1
-        temp = self.dataset[idx,:,self.permutation[self.count]]
-        indexes = indexes.unsqueeze(1).repeat(1,3)
-        self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1) #TODO biased or unbiased addition
-        self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
-        self.count+=1
-
-                
-        max = np.quantile(x,1-self.sppps/10)
-        idx = np.where(x>=max)[0]
-        indexes = self.indexes[idx] 
-        self.indexes[idx]= indexes+1
-        temp = self.dataset[idx,:,self.permutation[self.count]]
-        indexes = indexes.unsqueeze(1).repeat(1,3)
-        self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1) #TODO
-        self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
-        self.count+=1
-           
-
-
-
+        for i in self.partition:
+            self.sample(x,i)
 
         self.updated=False
 
@@ -173,14 +165,17 @@ class CustomEnv(gym.Env):
     self.denoising = env_config['denoising']
     self.HEIGHT = 720 
     self.WIDTH =   1280
+    self.partition = env_config["partition"]
+    self.CST=len(self.partition)
+    print(self.partition)
     self.max = int(self.spp/self.sppps) - int(1/self.sppps)+1 #
 
-    self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max*CST)]
+    self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max*self.CST)]
 
     self.add = load_additional(self.path,1,self.HEIGHT,self.WIDTH)
     self.albedo = load_albedo(self.path,1,self.HEIGHT,self.WIDTH)
 
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max*CST,self.denoising)
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max*self.CST,self.denoising,self.partition,self.CST)
 
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
@@ -199,13 +194,12 @@ class CustomEnv(gym.Env):
     if self.top<new:
         print(new)
         self.top = new
-        if self.top>.988:
+        if self.top>.993:
           self.insight()
     reward = - old + new
-#    print(self.spec.max_episode_steps)
+#    print(self.spec.max_episode_steps*self.CST)
 #    print(self.simulation.count)
-    done = self.spec.max_episode_steps*CST <= self.simulation.count
-    print(self.simulation.count)
+    done = self.spec.max_episode_steps*self.CST <= self.simulation.count
 
     return observation,reward.detach().numpy(),done, {}
 
@@ -213,12 +207,12 @@ class CustomEnv(gym.Env):
     img= self.simulation.indexes.unsqueeze(-1)
     norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
     te=str(random.random())
-    print(te)
+ #   print(te)
     save(self.simulation.out(norm),"/home/ascardigli/RL_PATH_TRACING/tmp/"+te+".png")
 
     
   def reset(self):
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max*2,self.denoising)
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max*self.CST,self.denoising,self.partition,self.CST)
     return self.simulation.observe()
     
   def render(self, mode='human', close=False):

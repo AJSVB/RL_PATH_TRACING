@@ -14,12 +14,31 @@ import ray.rllib.algorithms.td3 as td3 #Gave a mistake (strnage)
 import ray.rllib.algorithms.apex_ddpg as apex #Same mistake
 
 import random
+import numpy as np
+import math
+def generate_partition():
+    le = round(random.random()*10)
+    l = []
+    r=1
+    for i in range(le-1):
+        t=random.random()*r
+        r=r-t
+        l.append(t)
+    l.append(r)
+    return np.sort(l)[::-1]
+
+def generate_partition():
+    cs=math.e
+    n = 1/sum([cs**(-i) for i in range(12)])
+    return  [n*cs**(-i) for i in range(12)]
+
+
 
 def train_ppo_model():
     a = time.time()
     algo = appo.APPO(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':2, "sppps":.1,"denoising":True,"prob_sampling":True,
+'frame_number':1, 'spp':2, "sppps":.1,"denoising":True,"prob_sampling":True, "partition":generate_partition()
             },
           'framework' :"torch",
 
@@ -40,11 +59,11 @@ def train_ppo_model():
 "train_batch_size":32,
 #"replay_buffer_num_slots":100,
   "model":{
-   "custom_model":"UN"
+   "custom_model":"FCN"
 }
 })
     # Train for one iteration.
-    for _ in range(10):
+    for _ in range(7):
          algo.train()
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.
