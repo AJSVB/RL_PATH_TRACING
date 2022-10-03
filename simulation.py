@@ -90,46 +90,41 @@ class PhysicSimulation:
         self.denoising=denoising
     def reset(self):
         self.permutation = torch.randperm(self.max)
-        self.dataset=self.dataset[:,:,self.permutation[1:self.max]]
-        self.observations = self.dataset[:,:,0] #self.albedo #torch.zeros(self.dataset.shape[:2])
+        self.observations = self.dataset[:,:,self.permutation[0]] #self.albedo #torch.zeros(self.dataset.shape[:2])
  
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
-        self.count = self.CST #
+        self.count = 1 #
         self.updated=False
     
-    def sample(self,x,i,partition):
-        quantile=partition[i]
-        i=i+1
-        next= 0 if i==len(partition)  else partition[i]
+    def sample(self,x,quantile):
         max = np.quantile(x,1-self.sppps*quantile)
-        min = np.quantile(x,1-self.sppps*next)
-        idx = np.where(( x>=max) & (x<=min))[0]
-#        print(idx)
-#        print(len(idx))
+        idx = np.where(x>=max)[0]
         indexes = self.indexes[idx] 
-        self.indexes[idx]= indexes+i
-        b=time.time()
-        temp = self.dataset[:,:,self.count:self.count+i][idx]
-        print("botlneck" + str(time.time()-b))
- #       print(temp.shape)
- #       print(self.observations[idx,].shape)
-        indexes = indexes.unsqueeze(1).repeat(1,3)
-        tim = time.time() 
-        self.observations[idx,:] = (self.observations[idx,:] +  temp.sum(-1) ) #TODO bia>
-        self.variance[idx,:] = (self.variance[idx,:] + (temp**2).sum(-1) )
-        print("computations" + str(time.time()-tim))
-        #self.count+=1
+        self.indexes[idx]= indexes+1
+        temp = self.dataset[idx,:,self.permutation[self.count]]
+        self.observations[idx,:] = self.observations[idx,:] +  temp  #TODO bia>
+        self.variance[idx,:] = self.variance[idx,:] + temp**2 
+        self.count+=1
 
 
     def simulate(self, x):
         x=x.flatten()
-        for e in range(len(self.partition)):
-            tim = time.time()
-            self.sample(x,e,self.partition)
-            print("loop time " + str(time.time()-tim))
-        self.count+=len(self.partition)
+
+
+        max = np.quantile(x,1-self.sppps*self.partition[0])
+        idx = np.where(x>=max)[0]
+        indexes = self.indexes[idx].unsqueeze(1).repeat(1,3)
+        self.observations[idx,:]=self.observations[idx,:]*indexes
+        self.variance[idx,:]=self.variance[idx,:]*indexes
+
+        for i in self.partition:
+            self.sample(x,i)
+
+        indexes = self.indexes[idx].unsqueeze(1).repeat(1,3)
+        self.observations[idx,:]=self.observations[idx,:]/indexes
+        self.variance[idx,:]=self.variance[idx,:]/indexes
         self.updated=False
 
     def out(self,data):
@@ -138,6 +133,7 @@ class PhysicSimulation:
     def render(self):        
       if self.denoising:
         if not self.updated:
+          print("go there")
           with FileLock('/home/ascardigli/RL_PATH_TRACING/tmp/0.pfm.lock'):
             self.denoised= denoising.denoise(self.out(self.observations),str(0))
           self.updated=True
@@ -147,13 +143,17 @@ class PhysicSimulation:
 
 
     def observe(self):
+        b = time.time()
         rendersquared = self.observations**2
-        temp = np.concatenate((self.out(self.observations/self.indexes),\
-self.out((self.indexes/self.max).unsqueeze(-1)),\
- self.out((self.variance - rendersquared)/self.indexes**2)),axis=-1)            
-        return np.concatenate((temp,self.add, \
+        print(time.time()-b)
+
+        temp = np.concatenate((self.out(self.observations),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared))),axis=-1)            
+        print(time.time()-b)
+        temp = np.concatenate((temp,self.add, \
  norm((self.out(self.observations)-self.render()),self.denoising) \
   ),axis=-1,dtype=np.float32).transpose(2,0,1)
+        print(time.time()-b)
+        return temp
 
 
 class Spec:
@@ -162,8 +162,24 @@ class Spec:
     self.id = "3Drenderingenv"
 
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
-def MultiSSIM(a,b):
-    return ms_ssim(torch.Tensor(a).permute([2,0,1]).unsqueeze(0),torch.Tensor(b),data_range=1)
+
+
+#import ray
+#@ray.remote(num_gpus=1)
+def MultiSSIM(a,b,gpu_id):
+    print(gpu_id)
+    d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0).cuda(gpu_id)
+    e = torch.cat([c for c in b],0).cuda(gpu_id)
+    loss=SSIM(data_range=1,size_average=False).cuda(gpu_id)
+    return loss(d,e).cpu() #,data_range=1,size_average=False)
+
+#from piqa import SSIM
+#def MultiSSIM(a,b):
+#    d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0).cuda(1)
+#    e = torch.cat([c for c in b],0).cuda(1)
+#    ssim=SSIM().cuda(1)
+#    return ssim(d,e).cpu()
+
 
 
 
@@ -185,14 +201,14 @@ class CustomEnv(gym.Env):
     self.partition = env_config["partition"]
     self.CST=len(self.partition)
     print(self.partition)
-    self.max = int(self.spp/self.sppps) - int(1/self.sppps)+1 #
-
-    self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max*self.CST)]
+    self.max = (int(self.spp/self.sppps) - int(1/self.sppps) ) *self.CST +1 #
+    self.id = env_config.vector_index
+    self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
 
     self.add = load_additional(self.path,1,self.HEIGHT,self.WIDTH)
     self.albedo = load_albedo(self.path,1,self.HEIGHT,self.WIDTH)
 
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max*self.CST,self.denoising,self.partition,self.CST)
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
 
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
@@ -205,21 +221,27 @@ class CustomEnv(gym.Env):
 
   def step(self, action):
     a=time.time()
-    old = MultiSSIM(self.simulation.render(), self.ground_truth)
+    old = torch.Tensor(self.simulation.render())
+    print("begin" + str(time.time()-a))
     self.simulation.simulate(action)
-    print(time.time()-a)
     observation = self.simulation.observe()
-    new = MultiSSIM(self.simulation.render(), self.ground_truth)
+    a =time.time()
+    gd = torch.Tensor(self.ground_truth)
+    new=torch.Tensor(self.simulation.render())
+    old = MultiSSIM([old], [gd],self.id+1)[0]
+    new = MultiSSIM([new], [gd],self.id+1)[0]
+    print(old)
+    print("end" + str(time.time()-a))
     if self.top<new:
         print(new)
         self.top = new
         if self.top>.993:
           self.insight()
     reward = - old + new
-#    print(self.spec.max_episode_steps*self.CST)
-#    print(self.simulation.count)
-    done = self.spec.max_episode_steps*self.CST <= self.simulation.count
-    print(time.time()-a)
+    #print(self.spec.max_episode_steps)
+    #print(self.simulation.count)
+    done = self.spec.max_episode_steps <= self.simulation.count 
+#    print(time.time()-a)
     return observation,reward.detach().numpy(),done, {}
 
   def insight(self): 
@@ -231,7 +253,7 @@ class CustomEnv(gym.Env):
 
     
   def reset(self):
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max*self.CST,self.denoising,self.partition,self.CST)
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
     return self.simulation.observe()
     
   def render(self, mode='human', close=False):
