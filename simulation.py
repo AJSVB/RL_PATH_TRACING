@@ -90,7 +90,8 @@ class PhysicSimulation:
         self.denoising=denoising
     def reset(self):
         self.permutation = torch.randperm(self.max)
-        self.observations = self.dataset[:,:,self.permutation[0]] #self.albedo #torch.zeros(self.dataset.shape[:2])
+        self.dataset=self.dataset[:,:,self.permutation[1:self.max]]
+        self.observations = self.dataset[:,:,0] #self.albedo #torch.zeros(self.dataset.shape[:2])
  
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
@@ -98,23 +99,37 @@ class PhysicSimulation:
         self.count = self.CST #
         self.updated=False
     
-    def sample(self,x,quantile):
+    def sample(self,x,i,partition):
+        quantile=partition[i]
+        i=i+1
+        next= 0 if i==len(partition)  else partition[i]
         max = np.quantile(x,1-self.sppps*quantile)
-        idx = np.where(x>=max)[0]
+        min = np.quantile(x,1-self.sppps*next)
+        idx = np.where(( x>=max) & (x<=min))[0]
+#        print(idx)
+#        print(len(idx))
         indexes = self.indexes[idx] 
-        self.indexes[idx]= indexes+1
-        temp = self.dataset[idx,:,self.permutation[self.count]]
+        self.indexes[idx]= indexes+i
+        b=time.time()
+        temp = self.dataset[:,:,self.count:self.count+i][idx]
+        print("botlneck" + str(time.time()-b))
+ #       print(temp.shape)
+ #       print(self.observations[idx,].shape)
         indexes = indexes.unsqueeze(1).repeat(1,3)
-        self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1) #TODO bia>
-        self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
-        self.count+=1
+        tim = time.time() 
+        self.observations[idx,:] = (self.observations[idx,:] +  temp.sum(-1) ) #TODO bia>
+        self.variance[idx,:] = (self.variance[idx,:] + (temp**2).sum(-1) )
+        print("computations" + str(time.time()-tim))
+        #self.count+=1
 
 
     def simulate(self, x):
         x=x.flatten()
-        for i in self.partition:
-            self.sample(x,i)
-
+        for e in range(len(self.partition)):
+            tim = time.time()
+            self.sample(x,e,self.partition)
+            print("loop time " + str(time.time()-tim))
+        self.count+=len(self.partition)
         self.updated=False
 
     def out(self,data):
@@ -133,7 +148,9 @@ class PhysicSimulation:
 
     def observe(self):
         rendersquared = self.observations**2
-        temp = np.concatenate((self.out(self.observations),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared))),axis=-1)            
+        temp = np.concatenate((self.out(self.observations/self.indexes),\
+self.out((self.indexes/self.max).unsqueeze(-1)),\
+ self.out((self.variance - rendersquared)/self.indexes**2)),axis=-1)            
         return np.concatenate((temp,self.add, \
  norm((self.out(self.observations)-self.render()),self.denoising) \
   ),axis=-1,dtype=np.float32).transpose(2,0,1)
@@ -187,8 +204,10 @@ class CustomEnv(gym.Env):
     self.top = 0
 
   def step(self, action):
+    a=time.time()
     old = MultiSSIM(self.simulation.render(), self.ground_truth)
     self.simulation.simulate(action)
+    print(time.time()-a)
     observation = self.simulation.observe()
     new = MultiSSIM(self.simulation.render(), self.ground_truth)
     if self.top<new:
@@ -200,7 +219,7 @@ class CustomEnv(gym.Env):
 #    print(self.spec.max_episode_steps*self.CST)
 #    print(self.simulation.count)
     done = self.spec.max_episode_steps*self.CST <= self.simulation.count
-
+    print(time.time()-a)
     return observation,reward.detach().numpy(),done, {}
 
   def insight(self): 

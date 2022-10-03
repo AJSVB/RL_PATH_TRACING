@@ -28,9 +28,9 @@ def generate_partition():
     return np.sort(l)[::-1]
 
 def generate_partition():
-    cs=math.e
-    n = 1/sum([cs**(-i) for i in range(12)])
-    return  [n*cs**(-i) for i in range(12)]
+    cs=2 #math.e
+    n = 1/sum([cs**(-i) for i in range(15)]) #TODO when 16 it segfaults
+    return  [n*cs**(-i) for i in range(15)]
 
 
 
@@ -63,7 +63,7 @@ def train_ppo_model():
 }
 })
     # Train for one iteration.
-    for _ in range(7):
+    for _ in range(1):
          algo.train()
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.
