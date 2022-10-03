@@ -226,6 +226,7 @@ class CustomEnv(gym.Env):
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count
    # print("wole loop" + str(time.time()-a)) 
+    print(observation.numpy()
     return observation.numpy(),reward.detach().numpy(),done, {}
 
   def insight(self): 
@@ -238,7 +239,7 @@ class CustomEnv(gym.Env):
     
   def reset(self):
     self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
-    return self.simulation.observe()
+    return self.simulation.observe().numpy()
     
   def render(self, mode='human', close=False):
     return self.simulation.render()
