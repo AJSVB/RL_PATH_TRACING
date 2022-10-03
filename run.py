@@ -29,8 +29,8 @@ def generate_partition():
 
 def generate_partition():
     cs=2 #math.e
-    n = 1/sum([cs**(-i) for i in range(15)]) #TODO when 16 it segfaults
-    return  [n*cs**(-i) for i in range(15)]
+    n = 1/sum([cs**(-i) for i in range(10)]) #TODO when 16 it segfaults
+    return  [n*cs**(-i) for i in range(10)]
 
 
 

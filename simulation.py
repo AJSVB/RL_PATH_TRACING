@@ -165,7 +165,7 @@ from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 def MultiSSIM(a,b,gpu_id):
     d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0).cuda(gpu_id)
     e = torch.cat([c for c in b],0).cuda(gpu_id)
-    loss=SSIM(data_range=1,size_average=False).cuda(gpu_id)
+    loss=MS_SSIM(data_range=1,size_average=False).cuda(gpu_id)
     return loss(d,e).cpu() 
 
 
@@ -226,7 +226,6 @@ class CustomEnv(gym.Env):
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count
    # print("wole loop" + str(time.time()-a)) 
-    print(observation.numpy()
     return observation.numpy(),reward.detach().numpy(),done, {}
 
   def insight(self): 
