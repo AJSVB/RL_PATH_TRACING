@@ -5,7 +5,7 @@ import os
 
 albedo="~DiffCol0004.png"
 normal= "~Normal0004.png"
-
+import time
 HEIGHT=720 
 WIDTH =   1280
 
@@ -34,9 +34,9 @@ def pfm_to_tensor(path):
 
 def denoiser(color,alb,nrm,pid):
   a="/home/ascardigli/RL_PATH_TRACING/"
-
+#  b=time.time()
   os.system("~/oidn-1.4.3.x86_64.linux/bin/./oidnDenoise --ldr "+a+"tmp/"+color+".pfm --alb "+a+"tmp/"+alb+".pfm --nrm "+a+"tmp/"+nrm+".pfm -v 0 -o "+a+"tmp/"+pid+".pfm  > /dev/null")
-
+#  print("denoising real time" + str(time.time()-b))
 
 def initialise(path):
   path_to_pfm(path+albedo,"albedo")

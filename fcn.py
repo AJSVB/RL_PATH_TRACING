@@ -89,9 +89,9 @@ class FCN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-
-        for i in range(int(input_dict["obs"].shape[0]/2)):
-         x = input_dict["obs"][2*i:2*(i+1)]
+        CST=2
+        for i in range(int(input_dict["obs"].shape[0]/CST)):
+         x = input_dict["obs"][CST*i:CST*(i+1)]
          x = self._convs(x)
          tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
          o=self.head(x)

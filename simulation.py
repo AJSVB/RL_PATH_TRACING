@@ -17,7 +17,7 @@ import os
 def norm(a,denoising):
     if not denoising:
         return a*0
-    return (a-np.min(a))/(np.max(a)-np.min(a))
+    return (a-torch.min(a))/(torch.max(a)-torch.min(a))
 
 
 def ground_truth(path,number_images=10000,frame_number=1,HEIGHT=720,WIDTH=1280,name=""):
@@ -128,14 +128,15 @@ class PhysicSimulation:
         self.updated=False
 
     def out(self,data):
-        return data.view(self.HEIGHT,self.WIDTH,*data.shape[1:]).numpy()    
+        return data.view(self.HEIGHT,self.WIDTH,*data.shape[1:])    
 
     def render(self):        
       if self.denoising:
         if not self.updated:
-          print("go there")
+    #      b=time.time()
           with FileLock('/home/ascardigli/RL_PATH_TRACING/tmp/0.pfm.lock'):
-            self.denoised= denoising.denoise(self.out(self.observations),str(0))
+            self.denoised= torch.Tensor(denoising.denoise(self.out(self.observations),str(0)))
+     #     print("lock included" + str(time.time()-b))
           self.updated=True
         return self.denoised
       else:
@@ -143,16 +144,13 @@ class PhysicSimulation:
 
 
     def observe(self):
-        b = time.time()
+        a=self.render()
         rendersquared = self.observations**2
-        print(time.time()-b)
-
-        temp = np.concatenate((self.out(self.observations),self.out((self.indexes/self.max).unsqueeze(-1)), self.out((self.variance - rendersquared))),axis=-1)            
-        print(time.time()-b)
-        temp = np.concatenate((temp,self.add, \
- norm((self.out(self.observations)-self.render()),self.denoising) \
-  ),axis=-1,dtype=np.float32).transpose(2,0,1)
-        print(time.time()-b)
+        temp = torch.cat((self.out(self.observations),\
+self.out(self.indexes/self.max).unsqueeze(-1), \
+self.out(self.variance - rendersquared),self.add, \
+ norm((self.out(self.observations)-a),self.denoising) \
+  ),axis=-1).permute(2,0,1)
         return temp
 
 
@@ -164,21 +162,11 @@ class Spec:
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 
 
-#import ray
-#@ray.remote(num_gpus=1)
 def MultiSSIM(a,b,gpu_id):
-    print(gpu_id)
     d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0).cuda(gpu_id)
     e = torch.cat([c for c in b],0).cuda(gpu_id)
     loss=SSIM(data_range=1,size_average=False).cuda(gpu_id)
-    return loss(d,e).cpu() #,data_range=1,size_average=False)
-
-#from piqa import SSIM
-#def MultiSSIM(a,b):
-#    d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0).cuda(1)
-#    e = torch.cat([c for c in b],0).cuda(1)
-#    ssim=SSIM().cuda(1)
-#    return ssim(d,e).cpu()
+    return loss(d,e).cpu() 
 
 
 
@@ -220,29 +208,25 @@ class CustomEnv(gym.Env):
     self.top = 0
 
   def step(self, action):
-    a=time.time()
-    old = torch.Tensor(self.simulation.render())
-    print("begin" + str(time.time()-a))
+#    a=time.time()
+    old = self.simulation.render()
     self.simulation.simulate(action)
+ #   print("RT"+str(time.time()-a))
     observation = self.simulation.observe()
-    a =time.time()
-    gd = torch.Tensor(self.ground_truth)
-    new=torch.Tensor(self.simulation.render())
+  #  print("observation"+str(time.time()-a))
+    gd=self.ground_truth
+    new = self.simulation.render()
     old = MultiSSIM([old], [gd],self.id+1)[0]
     new = MultiSSIM([new], [gd],self.id+1)[0]
-    print(old)
-    print("end" + str(time.time()-a))
     if self.top<new:
         print(new)
         self.top = new
         if self.top>.993:
           self.insight()
     reward = - old + new
-    #print(self.spec.max_episode_steps)
-    #print(self.simulation.count)
-    done = self.spec.max_episode_steps <= self.simulation.count 
-#    print(time.time()-a)
-    return observation,reward.detach().numpy(),done, {}
+    done = self.spec.max_episode_steps <= self.simulation.count
+   # print("wole loop" + str(time.time()-a)) 
+    return observation.numpy(),reward.detach().numpy(),done, {}
 
   def insight(self): 
     img= self.simulation.indexes.unsqueeze(-1)
