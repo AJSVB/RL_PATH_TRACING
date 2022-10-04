@@ -49,19 +49,19 @@ def train_ppo_model():
 
 
 
-"num_envs_per_worker":2,
-        'num_workers':4,
+"num_envs_per_worker":1,
+        'num_workers':1,
 #"evaluation_num_workers":1,
 #'num_cpus_per_worker':10,
 
 
-'num_gpus_per_worker':1,
+'num_gpus_per_worker':4,
 ##"evaluation_interval":5,
-"rollout_fragment_length":8, #was20
+"rollout_fragment_length":2, #was20
 #"train_batch_size":32,
 #"replay_buffer_num_slots":100,
   "model":{
-   "custom_model":"UN"
+   "custom_model":"FCN"
 }
 })
     # Train for one iteration.

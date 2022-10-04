@@ -1,3 +1,4 @@
+
 import math
 import torchvision
 import torchvision.transforms as transforms
@@ -227,8 +228,8 @@ class CustomEnv(gym.Env):
     new = self.simulation.render()
     import ray
     a=time.time()
-    old = MultiSSIM([old], [gd],0)[0]
-    new = MultiSSIM([new], [gd],0)[0]
+    old = MultiSSIM([old], [gd],1)[0]
+    new = MultiSSIM([new], [gd],1)[0]
 #    print(time.time()-a)
     if self.top<new:
         print(new)

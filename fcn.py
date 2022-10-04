@@ -89,7 +89,7 @@ class FCN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-        CST=2
+        CST=1
         for i in range(int(y.shape[0]/CST)):
          x = y[CST*i:CST*(i+1),]
          x = self._convs(x)
