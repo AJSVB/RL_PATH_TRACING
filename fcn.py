@@ -48,9 +48,9 @@ class FCN(TorchModelV2, nn.Module):
                                         [20,[c,c], [1,1]],
                                         [14,[c,c], [1,1]],
                                         [8,[c,c], [1,1]],
-                                        [2,[c,c], [1,1]],
                                         [1,[c,c], [1,1]],
-                                        [2,[c,c], [1,1]]]
+                                        [1,[c,c], [1,1]],
+                                        [1,[c,c], [1,1]]]
 
         TorchModelV2.__init__(
             self, obs_space, action_space, num_outputs, model_config, name
@@ -78,20 +78,20 @@ class FCN(TorchModelV2, nn.Module):
             in_channels = out_channels
             in_size = out_size
 
-        self._convs = nn.Sequential(*layers[:-4])
-        self.head = nn.Sequential(*layers[-2:0])
-        self.head_value = nn.Sequential(*layers[-4:-2])
+        self._convs = nn.Sequential(*layers[:-4])#.cuda(0)
+        self.head = nn.Sequential(*layers[-2:0])#.cuda(0)
+        self.head_value = nn.Sequential(*layers[-4:-2])#.cuda(0)
         #GPUtil.showUtilization()
 
     def f(
         self,
-        input_dict: Dict[str, TensorType],
+        y,
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
         CST=2
-        for i in range(int(input_dict["obs"].shape[0]/CST)):
-         x = input_dict["obs"][CST*i:CST*(i+1)]
+        for i in range(int(y.shape[0]/CST)):
+         x = y[CST*i:CST*(i+1),]
          x = self._convs(x)
          tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
          o=self.head(x)
@@ -111,16 +111,18 @@ class FCN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-
-
-      if input_dict["obs"].shape[0]==8:
+      x=input_dict["obs"]
+      if x.shape[0]==8:
        with torch.no_grad():
-          out=self.f(input_dict,state,seq_lens)
+          out=self.f(x,state,seq_lens)
       else:
-          out=self.f(input_dict,state,seq_lens)
-
-#      GPUtil.showUtilization()
-      return out.reshape(input_dict["obs"].shape[0], -1), state
+          out=self.f(x,state,seq_lens)
+      #print(out[0].cpu().reshape(-1).detach().numpy())
+      #print(out[1].cpu().reshape(-1).detach().numpy())
+      t = out * 0 -10  
+      out=torch.cat((out,t),1)
+      out = out.reshape(input_dict["obs"].shape[0], -1)
+      return  out, state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:

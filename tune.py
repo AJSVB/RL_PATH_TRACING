@@ -1,6 +1,6 @@
 import fcn
 import simulation 
-
+import run
 import ray
 
 #ray.init(num_gpus=4)
@@ -38,17 +38,17 @@ if True:
         param_space={
             "env": simulation.CustomEnv,
 'env_config':{'path': "/home/ascardigli/datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':2, "sppps":.1 ,"denoising":True , "prob_sampling":True},
+'frame_number':1, 'spp':2, "sppps":.1 ,"denoising":True , "prob_sampling":True,"partition":run.generate_partition()},
 
           'framework' :"torch",
 "num_envs_per_worker":2,
-        'num_workers':1,
-'num_gpus_per_worker':4,
-"evaluation_interval":5,
-"rollout_fragment_length":20,
-"train_batch_size":20,
+        'num_workers':4,
+'num_gpus_per_worker':1,
+"evaluation_interval":10,
+"rollout_fragment_length":8,
+"train_batch_size":32,
   "model":{
-   "custom_model":"FCN"
+   "custom_model":"UN"
 },
             "gamma": tune.uniform(0.,1.),
             "kl_coeff":tune.uniform(0.,1.),

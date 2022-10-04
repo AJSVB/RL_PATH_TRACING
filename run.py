@@ -28,9 +28,12 @@ def generate_partition():
     return np.sort(l)[::-1]
 
 def generate_partition():
-    cs=2 #math.e
-    n = 1/sum([cs**(-i) for i in range(10)]) #TODO when 16 it segfaults
-    return  [n*cs**(-i) for i in range(10)]
+    return [1]
+
+#def generate_partition():
+#    cs=2 #math.e
+#    n = 1/sum([cs**(-i) for i in range(4)]) #TODO when 16 it segfaults
+#   return  [n*cs**(-i) for i in range(4)]
 
 
 
@@ -42,27 +45,27 @@ def train_ppo_model():
             },
           'framework' :"torch",
 
-"vf_loss_coeff":.3,"momentum":.7,"lr":.1,"lambda":.49,"kl_coeff":0,"grad_clip":400,"gamma":1,"epsilon":.8,"entropy_coeff":1e-5,"decay":.98,"clip_param":.1, #gamma was .47 but I believe 1 makes more sense
+"vf_loss_coeff":.3,"momentum":.7,"lr":.1,"lambda":.49,"kl_coeff":0,"grad_clip":400,"gamma":1,"epsilon":0.8,"entropy_coeff":1e-5,"decay":.98,"clip_param":.1, #gamma was .47 but I believe 1 makes more sense
 
 
 
 "num_envs_per_worker":2,
-        'num_workers':1,
+        'num_workers':4,
 #"evaluation_num_workers":1,
 #'num_cpus_per_worker':10,
 
 
-'num_gpus_per_worker':4,
+'num_gpus_per_worker':1,
 ##"evaluation_interval":5,
-"rollout_fragment_length":8, #was20
-"train_batch_size":32,
+"rollout_fragment_length":2, #was20
+#"train_batch_size":32,
 #"replay_buffer_num_slots":100,
   "model":{
-   "custom_model":"FCN"
+   "custom_model":"UN"
 }
 })
     # Train for one iteration.
-    for _ in range(1):
+    for _ in range(20):
          algo.train()
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.

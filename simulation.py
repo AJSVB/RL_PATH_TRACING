@@ -22,7 +22,6 @@ def norm(a,denoising):
 
 def ground_truth(path,number_images=10000,frame_number=1,HEIGHT=720,WIDTH=1280,name=""):
     dataset = get_ith_image(path,0,frame_number,HEIGHT,WIDTH) 
-    print(dataset.shape)    
     for i in range(1,number_images):
       dataset = (dataset*i + get_ith_image(path,i,frame_number,HEIGHT,WIDTH) )/(i+1.)
     img= T.ToPILImage()(dataset.squeeze(0))
@@ -101,6 +100,12 @@ class PhysicSimulation:
     def sample(self,x,quantile):
         max = np.quantile(x,1-self.sppps*quantile)
         idx = np.where(x>=max)[0]
+        max_l = np.round(self.HEIGHT*self.WIDTH*self.sppps*quantile)
+        #print(max_l)
+        #print(int(max_l))
+        a = (np.random.permutation(len(idx))[:int(max_l)])
+        idx = idx[a]
+#        print(len(idx))
         indexes = self.indexes[idx] 
         self.indexes[idx]= indexes+1
         temp = self.dataset[idx,:,self.permutation[self.count]]
@@ -119,6 +124,10 @@ class PhysicSimulation:
         self.observations[idx,:]=self.observations[idx,:]*indexes
         self.variance[idx,:]=self.variance[idx,:]*indexes
 
+
+  #      print(x)
+  #      print(1-self.sppps*np.array(self.partition))
+   #     print(np.quantile(x,1-self.sppps*np.array(self.partition)))
         for i in self.partition:
             self.sample(x,i)
 
@@ -188,7 +197,6 @@ class CustomEnv(gym.Env):
     self.WIDTH =   1280
     self.partition = env_config["partition"]
     self.CST=len(self.partition)
-    print(self.partition)
     self.max = (int(self.spp/self.sppps) - int(1/self.sppps) ) *self.CST +1 #
     self.id = env_config.vector_index
     self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
@@ -216,13 +224,14 @@ class CustomEnv(gym.Env):
   #  print("observation"+str(time.time()-a))
     gd=self.ground_truth
     new = self.simulation.render()
-    old = MultiSSIM([old], [gd],self.id+1)[0]
-    new = MultiSSIM([new], [gd],self.id+1)[0]
+    import ray
+    old = MultiSSIM([old], [gd],0)[0]
+    new = MultiSSIM([new], [gd],0)[0]
     if self.top<new:
         print(new)
         self.top = new
-        if self.top>.993:
-          self.insight()
+        if self.top>.98:
+         self.insight()
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count
    # print("wole loop" + str(time.time()-a)) 

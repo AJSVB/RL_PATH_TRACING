@@ -117,9 +117,9 @@ class UN(TorchModelV2, nn.Module):
 
         c=11
         filters = [
-                                        [2,[c,c], [1,1]],
                                         [1,[c,c], [1,1]],
-                                        [2,[c,c], [1,1]]]
+                                        [1,[c,c], [1,1]],
+                                        [1,[c,c], [1,1]]]
         layers=[]
         in_size = [w, h]
         for out_channels, kernel, stride in filters:
@@ -180,6 +180,9 @@ class UN(TorchModelV2, nn.Module):
           out=self.f(input_dict,state,seq_lens)
 
 #      GPUtil.showUtilization()
+      out = torch.cat((out,out*0.-10),1)
+
+
       return out.reshape(input_dict["obs"].shape[0], -1), state
 
     @override(TorchModelV2)
