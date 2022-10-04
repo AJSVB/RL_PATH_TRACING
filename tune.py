@@ -21,8 +21,8 @@ if True:
     hyperopt_search = HyperOptSearch()
 
     scheduler = ASHAScheduler(
-        max_t=20,
-        grace_period=5,
+        max_t=2,
+        grace_period=2,
         reduction_factor=2,
     )
 
@@ -33,7 +33,7 @@ if True:
             mode="max",
             search_alg=hyperopt_search,
             scheduler=scheduler,
-            num_samples=50,
+            num_samples=1,
         ),
         param_space={
             "env": simulation.CustomEnv,
@@ -52,8 +52,7 @@ if True:
 #"replay_buffer_num_slots":20,
   "model":{
    "custom_model":"FCN"
-}
-})
+},
 
 
 

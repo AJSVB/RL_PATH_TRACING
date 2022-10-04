@@ -241,8 +241,6 @@ class CustomEnv(gym.Env):
    # print("wole loop" + str(time.time()-a)) 
   
 
-    print(torch.isnan(observation).any())
-    print(torch.isnan(reward).any())
 
 
     return observation.numpy(),reward.detach().numpy(),done, {}

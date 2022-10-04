@@ -15,11 +15,26 @@ import ray.rllib.algorithms.apex_ddpg as apex #Same mistake
 
 import random
 
+import random
+import numpy as np
+import math
+def generate_partition():
+    le = round(random.random()*10)
+    l = []
+    r=1
+    for i in range(le-1):
+        t=random.random()*r
+        r=r-t
+        l.append(t)
+    l.append(r)
+    return np.sort(l)[::-1]
+
+
 def train_ppo_model():
     a = time.time()
     algo = appo.APPO(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':2, "sppps":.1,"denoising":True,"prob_sampling":True,"partition":[0]
+'frame_number':1, 'spp':2, "sppps":.1,"denoising":True,"prob_sampling":True,"partition":[1]
             },
           'framework' :"torch",
 
@@ -38,7 +53,7 @@ def train_ppo_model():
 }
 })
     # Train for one iteration.
-    for _ in range(2):
+    for _ in range(5):
          algo.train()
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.
@@ -47,4 +62,5 @@ def train_ppo_model():
 
 
 #simulation.ground_truth("../datasets/temple/",name="truth.png")
-train_ppo_model()
+if __name__ == "__main__":
+    train_ppo_model()

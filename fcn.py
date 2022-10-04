@@ -83,26 +83,26 @@ class FCN(TorchModelV2, nn.Module):
         self.head = nn.Sequential(*layers[-2:0])#.cuda(0)
         self.head_value = nn.Sequential(*layers[-4:-2])#.cuda(0)
         #GPUtil.showUtilization()
-
+        self.CST=2
     def f(
         self,
         y,
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-        CST=2
-        for i in range(int(y.shape[0]/CST)):
-         x = y[CST*i:CST*(i+1),]
+#        CST=min(self.CST,y.shape[0])
+#        for i in range(int(y.shape[0]/CST)):
+         x = y #[CST*i:CST*(i+1),]
          x = self._convs(x)
          tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
          o=self.head(x)
-         if i==0:
-          self.tmp = tmp
-          out=o
-         else:
-          out=torch.cat((out,o),0)
-          self.tmp=torch.cat((self.tmp,tmp),0)
-        return out
+        # if i==0:
+         self.tmp = tmp
+         out=o
+        # else:
+        #  out=torch.cat((out,o),0)
+        #  self.tmp=torch.cat((self.tmp,tmp),0)
+         return out
 
 
     @override(TorchModelV2)
@@ -114,12 +114,8 @@ class FCN(TorchModelV2, nn.Module):
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"]
       print(x.shape)
-      if x.shape[0]==8:
-       with torch.no_grad():
-          out=self.f(x,state,seq_lens)
-      else:
-          out=self.f(x,state,seq_lens)
-      #print(out[0].cpu().reshape(-1).detach().numpy())
+      out=self.f(x,state,seq_lens)
+      #print(out[0].cpu().reshape(-1).detach().numpy()) #TODO Do someting for the grad
       #print(out[1].cpu().reshape(-1).detach().numpy())
       t = out *  0 -10  
       out=torch.cat((out,t),1)
