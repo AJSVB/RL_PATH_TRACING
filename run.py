@@ -35,8 +35,8 @@ def generate_partition():
 #    n = 1/sum([cs**(-i) for i in range(4)]) #TODO when 16 it segfaults
 #   return  [n*cs**(-i) for i in range(4)]
 
-
-
+import ray
+ray.init(num_gpus=4)
 def train_ppo_model():
     a = time.time()
     algo = appo.APPO(env=simulation.CustomEnv,config={
@@ -57,7 +57,7 @@ def train_ppo_model():
 
 'num_gpus_per_worker':1,
 ##"evaluation_interval":5,
-"rollout_fragment_length":2, #was20
+"rollout_fragment_length":8, #was20
 #"train_batch_size":32,
 #"replay_buffer_num_slots":100,
   "model":{
