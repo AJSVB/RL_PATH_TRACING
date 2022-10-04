@@ -75,7 +75,7 @@ def load_albedo(path,frame_number=1,HEIGHT=480,WIDTH=640):
 
 class PhysicSimulation:
 
-    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,albedo=None,HEIGHT=480,WIDTH=730,max=10,denoising=True,prob_sampling=True):
+    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,albedo=None,HEIGHT=480,WIDTH=730,max=10,denoising=True,partition=None,CST=0):
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.dataset = cached(list)
@@ -87,6 +87,7 @@ class PhysicSimulation:
         self.reset()
         self.updated=False
         self.denoising=denoising
+        self.partition=partition
     def reset(self):
         self.permutation = torch.randperm(self.max)
         self.observations = self.dataset[:,:,self.permutation[0]] #self.albedo #torch.zeros(self.dataset.shape[:2])
@@ -96,22 +97,13 @@ class PhysicSimulation:
         self.variance = self.observations**2
         self.count = 1 #
         self.updated=False
-    def simulate(self, x):
-        x=x.flatten()
-        max = np.quantile(x,1-self.sppps*9/10)
-        idx = np.where(x>=max)[0]
-        indexes = self.indexes[idx] 
-        self.indexes[idx]= indexes+1
-        temp = self.dataset[idx,:,self.permutation[self.count]]
-        indexes = indexes.unsqueeze(1).repeat(1,3)
-        self.observations[idx,:] = (self.observations[idx,:]*indexes +  temp )/(indexes+1) #TODO biased or unbiased addition
-        self.variance[idx,:] = (self.variance[idx,:]*indexes + temp**2 )/(indexes+1)
-        self.count+=1
 
+
+    def sample(self, x):
                 
         max = np.quantile(x,1-self.sppps/10)
         idx = np.where(x>=max)[0]
-        max_l = np.round(self.HEIGHT*self.WIDTH*self.sppps*quantile)
+        max_l = np.round(self.HEIGHT*self.WIDTH*self.sppps*1)
         #print(max_l)
         #print(int(max_l))
         a = (np.random.permutation(len(idx))[:int(max_l)])
@@ -142,7 +134,7 @@ class PhysicSimulation:
   #      print(1-self.sppps*np.array(self.partition))
    #     print(np.quantile(x,1-self.sppps*np.array(self.partition)))
         for i in self.partition:
-            self.sample(x,i)
+            self.sample(x)
 
         indexes = self.indexes[idx].unsqueeze(1).repeat(1,3)
         self.observations[idx,:]=self.observations[idx,:]/indexes
