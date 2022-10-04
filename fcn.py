@@ -38,17 +38,17 @@ class FCN(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
-        c=11
+        c=3
         model_config["conv_filters"] = [
-            #                            [12,[c,c], [1,1]],
-            #                            [12,[c,c], [1,1]],
-           #                             [12,[c,c], [1,1]],
-           #                             [12,[c,c], [1,1]],
-           #                             [12,[c,c], [1,1]],
-           #                             [10,[c,c], [1,1]],
                                         [20,[c,c], [1,1]],
+                                        [18,[c,c], [1,1]],
+                                        [16,[c,c], [1,1]],
                                         [14,[c,c], [1,1]],
+                                        [12,[c,c], [1,1]],
+                                        [10,[c,c], [1,1]],
                                         [8,[c,c], [1,1]],
+                                        [6,[c,c], [1,1]],
+                                        [4,[c,c], [1,1]],
                                         [1,[c,c], [1,1]],
                                         [1,[c,c], [1,1]],
                                         [1,[c,c], [1,1]]]
@@ -90,7 +90,7 @@ class FCN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-        CST=1
+        CST=2
         for i in range(int(y.shape[0]/CST)):
          x = y[CST*i:CST*(i+1),]
          x = self._convs(x)
@@ -113,6 +113,7 @@ class FCN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"]
+      print(x.shape)
       if x.shape[0]==8:
        with torch.no_grad():
           out=self.f(x,state,seq_lens)
@@ -120,14 +121,16 @@ class FCN(TorchModelV2, nn.Module):
           out=self.f(x,state,seq_lens)
       #print(out[0].cpu().reshape(-1).detach().numpy())
       #print(out[1].cpu().reshape(-1).detach().numpy())
-      t = out * 0 -10  
+      t = out *  0 -10  
       out=torch.cat((out,t),1)
       out = out.reshape(input_dict["obs"].shape[0], -1)
+  #    print(torch.isnan(out).any())
       return  out, state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:
         assert self.tmp is not None, "must call forward() first"
+ #       print(torch.isnan(self.tmp).any())
         return self.tmp
 
 

@@ -239,6 +239,12 @@ class CustomEnv(gym.Env):
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count
    # print("wole loop" + str(time.time()-a)) 
+  
+
+    print(torch.isnan(observation).any())
+    print(torch.isnan(reward).any())
+
+
     return observation.numpy(),reward.detach().numpy(),done, {}
 
   def insight(self): 

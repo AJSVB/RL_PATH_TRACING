@@ -42,14 +42,22 @@ if True:
 
           'framework' :"torch",
 "num_envs_per_worker":2,
-        'num_workers':4,
-'num_gpus_per_worker':1,
-"evaluation_interval":10,
-"rollout_fragment_length":8,
-"train_batch_size":32,
+        'num_workers':1,
+#"evaluation_num_workers":1,
+#'num_cpus_per_worker':10,
+'num_gpus_per_worker':4,
+"evaluation_interval":5,
+"rollout_fragment_length":4, #was20
+"train_batch_size":4,
+#"replay_buffer_num_slots":20,
   "model":{
-   "custom_model":"UN"
-},
+   "custom_model":"FCN"
+}
+})
+
+
+
+
             "gamma": tune.uniform(0.,1.),
             "kl_coeff":tune.uniform(0.,1.),
             "lambda": tune.uniform(0., 1.0),
