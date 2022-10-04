@@ -41,7 +41,7 @@ def train_ppo_model():
     a = time.time()
     algo = appo.APPO(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':2, "sppps":.1,"denoising":True,"prob_sampling":True, "partition":generate_partition()
+'frame_number':1, 'spp':2, "sppps":.1,"denoising":True,"prob_sampling":True,
             },
           'framework' :"torch",
 
@@ -61,7 +61,7 @@ def train_ppo_model():
 #"train_batch_size":32,
 #"replay_buffer_num_slots":100,
   "model":{
-   "custom_model":"FCN"
+   "custom_model":"UN"
 }
 })
     # Train for one iteration.
