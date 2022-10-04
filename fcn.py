@@ -1,3 +1,4 @@
+
 import GPUtil
 import torch.nn.functional as F
 from torch.utils.data import Dataset
@@ -17,9 +18,7 @@ from ray.rllib.models.torch.misc import (
     SlimConv2d,
     SlimFC,
 )
-
-from torch import nn 
-
+from torch.nn import Conv2d
 from ray.rllib.models.utils import get_activation_fn, get_filter_config
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils.framework import try_import_torch
@@ -37,72 +36,63 @@ class FCN(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
-        c=11
-        model_config["conv_filters"] = [
-            #                            [12,[c,c], [1,1]],
-            #                            [12,[c,c], [1,1]],
-           #                             [12,[c,c], [1,1]],
-           #                             [12,[c,c], [1,1]],
-           #                             [12,[c,c], [1,1]],
-           #                             [10,[c,c], [1,1]],
-                                        [20,[c,c], [1,1]],
-                                        [14,[c,c], [1,1]],
-                                        [8,[c,c], [1,1]],
-                                        [1,[c,c], [1,1]],
-                                        [1,[c,c], [1,1]],
-                                        [1,[c,c], [1,1]]]
+        c=3
+        filters = [
+                                        [2,[c,c], [1,1]],
+   #                                     [4,[c,c], [1,1]],
+   #                                     [4,[c,c], [1,1]],
+   #                                     [4,[c,c], [1,1]],
+          #                              [2,[c,c], [1,1]],
+                                        #[5,[c,c], [1,1]],
+                                        [2,[c,c], [1,1]],
+#                                        [2,[c,c], [1,1]],
+#                                        [2,[c,c], [1,1]],
+                                        [2,[c,c], [1,1]],
+                                        [2,[c,c], [1,1]]]
 
         TorchModelV2.__init__(
             self, obs_space, action_space, num_outputs, model_config, name
         )
         nn.Module.__init__(self)
 
-        filters = model_config["conv_filters"]
+        activation = "tanh" 
 
         layers = []
-        (in_channels,w, h) = obs_space.shape
+        (in_channels,w,h) = obs_space.shape
+ #       print("nothing happend")
+ #       GPUtil.showUtilization()
         in_size = [w, h]
         for out_channels, kernel, stride in filters:
             padding, out_size = same_padding(in_size, kernel, stride)
+            print(in_size)
+            print(kernel)
+            print(stride)
+            print(padding)
+            print(out_size)
             layers.append(
-                nn.Conv2d(
+                Conv2d(
                     in_channels,
                     out_channels,
                     kernel,
                     stride,
-                    padding[:2],
-                #    activation_fn=activation,
+                    padding[:2], #Super strange
+                    #activation_fn=activation,
                 )
             )
-            layers.append(nn.Tanh())
             in_channels = out_channels
             in_size = out_size
+            layers.append(get_activation_fn(activation, "torch")()) 
 
-        self._convs = nn.Sequential(*layers[:-4])#.cuda(0)
-        self.head = nn.Sequential(*layers[-2:0])#.cuda(0)
-        self.head_value = nn.Sequential(*layers[-4:-2])#.cuda(0)
         #GPUtil.showUtilization()
-
-    def f(
-        self,
-        y,
-        state: List[TensorType],
-        seq_lens: TensorType,
-    ) -> (TensorType, List[TensorType]):
-        CST=1
-        for i in range(int(y.shape[0]/CST)):
-         x = y[CST*i:CST*(i+1),]
-         x = self._convs(x)
-         tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
-         o=self.head(x)
-         if i==0:
-          self.tmp = tmp
-          out=o
-         else:
-          out=torch.cat((out,o),0)
-          self.tmp=torch.cat((self.tmp,tmp),0)
-        return out
-
+        self._convs = nn.Sequential(*layers[:4])
+        self.head = nn.Sequential(*layers[-2:0])
+        self.head_value = nn.Sequential(*layers[-4:-2])
+        #GPUtil.showUtilization()
+#        self._value_branch = SlimFC(
+#                int(out_size[0]*out_size[1]*2), 1, initializer=normc_initializer(0.01), activation_fn=None
+#            )
+        self._features = None
+        GPUtil.showUtilization()
 
     @override(TorchModelV2)
     def forward(
@@ -111,23 +101,24 @@ class FCN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-      x=input_dict["obs"]
-      if x.shape[0]==8:
-       with torch.no_grad():
-          out=self.f(x,state,seq_lens)
-      else:
-          out=self.f(x,state,seq_lens)
-      #print(out[0].cpu().reshape(-1).detach().numpy())
-      #print(out[1].cpu().reshape(-1).detach().numpy())
-      t = out * 0 -10  
-      out=torch.cat((out,t),1)
-      out = out.reshape(input_dict["obs"].shape[0], -1)
-      return  out, state
+#        print("forward")
+#        GPUtil.showUtilization()
+#        print(input_dict["obs"].float().shape)
+        x = input_dict["obs"]
+#        GPUtil.showUtilization()
+        x = self._convs(x)
+#        GPUtil.showUtilization()
+        self._features = self.head_value(x).reshape(x.shape[0], 1, -1).mean(-1).squeeze(-1)
+#        GPUtil.showUtilization()
+        x=self.head(x) 
+#        print("end forward")
+#        GPUtil.showUtilization()
+        return x.reshape(x.shape[0], 1, -1).permute(0,2,1).squeeze(-1), state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:
-        assert self.tmp is not None, "must call forward() first"
-        return self.tmp
+        assert self._features is not None, "must call forward() first"
+        return self._features 
 
 
     
