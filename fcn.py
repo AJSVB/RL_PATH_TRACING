@@ -113,7 +113,7 @@ class FCN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"]
-      print(x.shape)
+#      print(x.shape)
       out=self.f(x,state,seq_lens)
       #print(out[0].cpu().reshape(-1).detach().numpy()) #TODO Do someting for the grad
       #print(out[1].cpu().reshape(-1).detach().numpy())
