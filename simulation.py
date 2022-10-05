@@ -174,6 +174,14 @@ from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 import ray
 
 def MultiSSIM(a,b,gpu_id):
+  if gpu_id==-1:
+
+    d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0)
+    e = torch.cat([c for c in b],0)
+    loss=MS_SSIM(data_range=1,size_average=False)
+    return loss(d,e)
+
+  else:
     d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0).cuda(gpu_id)
     e = torch.cat([c for c in b],0).cuda(gpu_id)
     loss=MS_SSIM(data_range=1,size_average=False).cuda(gpu_id)
@@ -227,13 +235,14 @@ class CustomEnv(gym.Env):
     gd=self.ground_truth
     new = self.simulation.render()
     import ray
-    old = MultiSSIM([old], [gd],0)[0]
-    new = MultiSSIM([new], [gd],0)[0]
+    i=-0 #works with 0 outside of tune.py TODO
+    old = MultiSSIM([old], [gd],i)[0]
+    new = MultiSSIM([new], [gd],i)[0]
 #    print(time.time()-a)
     if self.top<new:
         print(new)
         self.top = new
-        if self.top>.968:
+        if self.top>.96:
          self.insight()
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count

@@ -115,8 +115,6 @@ class FCN(TorchModelV2, nn.Module):
       x=input_dict["obs"]
 #      print(x.shape)
       out=self.f(x,state,seq_lens)
-      #print(out[0].cpu().reshape(-1).detach().numpy()) #TODO Do someting for the grad
-      #print(out[1].cpu().reshape(-1).detach().numpy())
       t = out *  0 -10  
       out=torch.cat((out,t),1)
       out = out.reshape(input_dict["obs"].shape[0], -1)

@@ -21,7 +21,7 @@ if True:
     hyperopt_search = HyperOptSearch()
 
     scheduler = ASHAScheduler(
-        max_t=2,
+        max_t=10,
         grace_period=2,
         reduction_factor=2,
     )
@@ -33,7 +33,7 @@ if True:
             mode="max",
             search_alg=hyperopt_search,
             scheduler=scheduler,
-            num_samples=1,
+            num_samples=50,
         ),
         param_space={
             "env": simulation.CustomEnv,
@@ -57,7 +57,7 @@ if True:
 
 
 
-            "gamma": tune.uniform(0.,1.),
+            "gamma": 1,
             "kl_coeff":tune.uniform(0.,1.),
             "lambda": tune.uniform(0., 1.0),
             "clip_param": tune.uniform(0.01, 0.9),
