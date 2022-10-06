@@ -38,22 +38,21 @@ if True:
         param_space={
             "env": simulation.CustomEnv,
 'env_config':{'path': "/home/ascardigli/datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':2, "sppps":.1 ,"denoising":True , "prob_sampling":True,"partition":run.generate_partition()},
+'frame_number':1, 'spp':2, "sppps":.1 ,"denoising":True , "prob_sampling":True,"partition":[1]},
 
           'framework' :"torch",
-"num_envs_per_worker":2,
-        'num_workers':4,
-#"evaluation_num_workers":1,
-#'num_cpus_per_worker':10,
-'num_gpus_per_worker':1,
-"evaluation_interval":5,
+
+
+"num_envs_per_worker":1,
+        'num_workers':1,
+#'num_cpus_per_worker':48,
+'num_gpus_per_worker':4,
+"evaluation_interval":10,
 "rollout_fragment_length":4, #was20
 "train_batch_size":4,
-#"replay_buffer_num_slots":20,
   "model":{
-   "custom_model":"FCN"
+   "custom_model":"FCN",
 },
-
 
 
 

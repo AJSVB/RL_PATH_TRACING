@@ -55,7 +55,7 @@ def get_add(path,detail):
     x = TF.to_tensor(image)
     if x[0,:].equal(x[1,:]):
         x = x[0:1,:]
-    return x
+    return x.mean(0).unsqueeze(0)
 
 def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
     dataset = torch.cat([get_add(path,a) for a in  ["Normal","DiffCol","Mist"]])
@@ -121,7 +121,7 @@ class PhysicSimulation:
 
         max = np.quantile(x,1-self.sppps*self.partition[0])
         idx = np.where(x>=max)[0]
-        indexes = self.indexes[idx].unsqueeze(1).repeat(1,3)
+        indexes = self.indexes[idx].unsqueeze(1)#.repeat(1,3)
         self.observations[idx,:]=self.observations[idx,:]*indexes
         self.variance[idx,:]=self.variance[idx,:]*indexes
 
@@ -156,11 +156,13 @@ class PhysicSimulation:
     def observe(self):
         a=self.render()
         rendersquared = self.observations**2
-        temp = torch.cat((self.out(self.observations),\
+        temp = torch.cat((self.out(self.observations.mean(1).unsqueeze(1)),\
 self.out(self.indexes/self.max).unsqueeze(-1), \
-self.out(self.variance - rendersquared),self.add, \
+self.out((self.variance - rendersquared).mean(1).unsqueeze(1)),self.add, \
  norm((self.out(self.observations)-a),self.denoising) \
   ),axis=-1).permute(2,0,1)
+    
+#        print(temp.shape)
         return temp
 
 
@@ -218,7 +220,7 @@ class CustomEnv(gym.Env):
 
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (17,self.HEIGHT,self.WIDTH), dtype=np.float32) #MACHINE PRECISION
+                    (9,self.HEIGHT,self.WIDTH), dtype=np.float32) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
 
     self.spec = Spec(self.max)
@@ -248,7 +250,6 @@ class CustomEnv(gym.Env):
     done = self.spec.max_episode_steps <= self.simulation.count
 #    print("wole loop" + str(time.time()-a)) 
   
-
 
 
     return observation.numpy(),reward.detach().numpy(),done, {}

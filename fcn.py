@@ -38,17 +38,12 @@ class FCN(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
-        c=3
+        c=5
         model_config["conv_filters"] = [
-                                        [20,[c,c], [1,1]],
-                                        [18,[c,c], [1,1]],
-                                        [16,[c,c], [1,1]],
-                                        [14,[c,c], [1,1]],
-                                        [12,[c,c], [1,1]],
-                                        [10,[c,c], [1,1]],
-                                        [8,[c,c], [1,1]],
-                                        [6,[c,c], [1,1]],
-                                        [4,[c,c], [1,1]],
+                                        [64,[c,c], [1,1]],
+                                        [64,[c,c], [1,1]],
+                                        [64,[c,c], [1,1]],
+                                        [64,[c,c], [1,1]],
                                         [1,[c,c], [1,1]],
                                         [1,[c,c], [1,1]],
                                         [1,[c,c], [1,1]]]
@@ -75,34 +70,27 @@ class FCN(TorchModelV2, nn.Module):
                 #    activation_fn=activation,
                 )
             )
-            layers.append(nn.Tanh())
-            in_channels = out_channels
+            layers.append(nn.ReLU())
+            in_channels = 64
             in_size = out_size
 
-        self._convs = nn.Sequential(*layers[:-4])#.cuda(0)
-        self.head = nn.Sequential(*layers[-2:0])#.cuda(0)
-        self.head_value = nn.Sequential(*layers[-4:-2])#.cuda(0)
-        #GPUtil.showUtilization()
-        self.CST=2
+        self._convs = nn.Sequential(*layers[:-6])
+        self.head = nn.Sequential(*layers[-2:])
+        self.head_std = nn.Sequential(*layers[-6:-4])
+        self.head_value = nn.Sequential(*layers[-4:-2])
     def f(
         self,
         y,
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-#        CST=min(self.CST,y.shape[0])
-#        for i in range(int(y.shape[0]/CST)):
          x = y #[CST*i:CST*(i+1),]
          x = self._convs(x)
          tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
-         o=self.head(x)
-        # if i==0:
+         out=self.head(x).reshape(*x.shape[:1],1,-1)
          self.tmp = tmp
-         out=o
-        # else:
-        #  out=torch.cat((out,o),0)
-        #  self.tmp=torch.cat((self.tmp,tmp),0)
-         return out
+         std=self.head_std(x).reshape(*x.shape[:1],1,-1,1).mean(2)
+         return out,std
 
 
     @override(TorchModelV2)
@@ -113,18 +101,16 @@ class FCN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"]
-#      print(x.shape)
-      out=self.f(x,state,seq_lens)
-      t = out *  0 -10  
+      out,std=self.f(x,state,seq_lens)
+      std = std.repeat(1,1,out.shape[-1])
+      t =  -10*std
       out=torch.cat((out,t),1)
       out = out.reshape(input_dict["obs"].shape[0], -1)
-  #    print(torch.isnan(out).any())
       return  out, state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:
         assert self.tmp is not None, "must call forward() first"
- #       print(torch.isnan(self.tmp).any())
         return self.tmp
 
 

@@ -34,14 +34,14 @@ def train_ppo_model():
     a = time.time()
     algo = appo.APPO(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':2, "sppps":.1,"denoising":True,"prob_sampling":True,"partition":generate_partition()
+'frame_number':1, 'spp':2, "sppps":.1,"denoising":True,"prob_sampling":True,"partition":[1]
             },
           'framework' :"torch",
 
 "vf_loss_coeff":.4,
 "momentum":.7,
 "lr":1e-6,"lambda":.8,"kl_coeff":.6,"grad_clip":.4,"gamma":1,
-"epsilon":0.56,
+"epsilon":0.9,
 "entropy_coeff":1e-3,
 "decay":.98,
 "clip_param":.04, 
@@ -49,22 +49,24 @@ def train_ppo_model():
 
 
 
-
-"num_envs_per_worker":2,
-        'num_workers':4,
+"num_envs_per_worker":1,
+        'num_workers':1,
 #"evaluation_num_workers":1,
-#'num_cpus_per_worker':10,
-'num_gpus_per_worker':1,
-"evaluation_interval":5,
+'num_cpus_per_worker':48,
+'num_gpus_per_worker':4,
+"evaluation_interval":10,
 "rollout_fragment_length":4, #was20
 "train_batch_size":4,
 "replay_buffer_num_slots":30,
   "model":{
-   "custom_model":"FCN"
+   "custom_model":"FCN",
+"fcnet_hiddens":[],
+"no_final_linear":True,
+
 }
 })
     # Train for one iteration.
-    for _ in range(5):
+    for _ in range(50):
          algo.train()
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.
