@@ -54,7 +54,7 @@ def get_add(path,detail):
     x = TF.to_tensor(image)
     if x[0,:].equal(x[1,:]):
         x = x[0:1,:]
-    return x.mean(0).unsqueeze(0)
+    return x
 
 def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
     dataset = torch.cat([get_add(path,a) for a in  ["Normal","DiffCol","Mist"]])
@@ -132,7 +132,7 @@ class PhysicSimulation:
         self.variance[idx,:]=self.variance[idx,:]/indexes
         self.updated=False
 
-        if torch.sum(self.indexes)==2*self.observations.shape[0]:
+        if random.random() > .9 and torch.sum(self.indexes)==2*self.observations.shape[0]:
             print(torch.var(self.indexes.float()))
 
     def out(self,data):
@@ -155,9 +155,9 @@ class PhysicSimulation:
         a=self.render()
         rendersquared = self.observations**2
         temp = torch.cat((
-self.out(self.observations.mean(1).unsqueeze(1)),\
+self.out(self.observations),\
 self.out(self.indexes/self.max).unsqueeze(-1), \
-self.out((self.variance - rendersquared).mean(1).unsqueeze(1)),self.add, \
+self.out((self.variance - rendersquared)),self.add, \
  norm((self.out(self.observations)-a),self.denoising) \
   ),axis=-1).permute(2,0,1)
         return temp
@@ -217,7 +217,7 @@ class CustomEnv(gym.Env):
 
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (9,self.HEIGHT,self.WIDTH), dtype=np.float32) #MACHINE PRECISION
+                    (17,self.HEIGHT,self.WIDTH), dtype=np.float32) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
 
     self.spec = Spec(self.max)
@@ -241,7 +241,7 @@ class CustomEnv(gym.Env):
     if self.top<new:
         print(new)
         self.top = new
-        if self.top>.96:
+        if self.top>.97:
          self.insight()
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count
