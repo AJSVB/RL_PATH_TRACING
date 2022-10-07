@@ -20,7 +20,7 @@ def train_ppo_model():
     a = time.time()
     algo = td3.TD3(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':2, "sppps":.1,"denoising":True,"prob_sampling":True,"partition":[1],
+'frame_number':1, 'spp':2, "sppps":.5,"denoising":True,"prob_sampling":True,"partition":[1],
             },
           'framework' :"torch",
 #"num_cpus_for_driver":46,
@@ -31,7 +31,7 @@ def train_ppo_model():
 "min_sample_timesteps_per_iteration":20,
 "replay_buffer_config":{
 "capacity":500,
-"learning_starts":20,
+"learning_starts":0,
 },
 "model":{
 "fcnet_hiddens":[],

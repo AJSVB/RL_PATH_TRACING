@@ -48,10 +48,10 @@ if True:
 "use_state_preprocessor":True,
 "actor_hiddens": [],
 "critic_hiddens":  [],
-"min_sample_timesteps_per_iteration":20,
+"min_sample_timesteps_per_iteration":100,
 "replay_buffer_config":{
 "capacity":500,
-"learning_starts":20,
+"learning_starts":tune.choice(range(0,500,20)),
 },
 "model":{
 "fcnet_hiddens":[],
@@ -59,22 +59,22 @@ if True:
 "custom_model":"FCN1"
 },
 "exploration_config":{
-"random_timesteps":20,
-"stddev":tune.choice([1e-1,1e-2,1e-3])
+"random_timesteps":tune.choice(range(0,500,20)),
+"stddev":tune.choice([1,.3,1e-1,3e-2,1e-2,3e-3,1e-3,3e-4]),
+"final_scale":tune.choice([0,1])
 },
-            "gamma": 1,
-"train_batch_size":10,
+            "gamma": tune.uniform(0,1),
+"train_batch_size": tune.choice(range(4,100,10)),
 
             "target_noise":tune.uniform(.1,.9),
             "target_noise_clip":tune.uniform(.2,.8),
-            "critic_lr": tune.choice([2e-5, 1e-5,5e-6]),
-            "actor_lr": tune.choice([ 2e-5, 1e-5,5e-6]),
-            "tau": tune.choice([ 1e-5,1e-6,1e-7]),
-
-
+            "critic_lr": tune.choice([1e-2,3e-3,1e-4,3e-4,1e-4,3e-5, 1e-5,3e-5,1e-5,3e-6,1e-6]),
+            "actor_lr":  tune.choice([1e-2,3e-3,1e-4,3e-4,1e-4,3e-5, 1e-5,3e-5,1e-5,3e-6,1e-6]),
+            "tau":  tune.choice([3e-7,1e-7,3e-8,1e-8,1e-4,3e-5, 1e-5,3e-5,1e-5,3e-6,1e-6]),
             "lr": tune.choice([5e-4, 1e-4, 5e-5, 1e-5,1e-6]),
-            "grad_clip": tune.choice([.4,4,40]),
-
+            "grad_clip": tune.choice([.1,.4,1,4,40,100]),
+             "l2_reg":tune.choice([3e-7,1e-7,3e-8,1e-8,1e-4,3e-5, 1e-5,3e-5,1e-5,3e-6,1e-6]),
+           
   }
    )
     results = tuner.fit()
