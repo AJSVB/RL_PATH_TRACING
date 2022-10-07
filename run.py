@@ -32,32 +32,29 @@ def generate_partition():
 
 def train_ppo_model():
     a = time.time()
-    algo = appo.APPO(env=simulation.CustomEnv,config={
+    algo = ppo.PPO(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
 'frame_number':1, 'spp':2, "sppps":.5,"denoising":True,"prob_sampling":True,"partition":[1]
             },
           'framework' :"torch",
-
-"vf_loss_coeff":.4,
-"momentum":.7,
-"lr":1e-6,"lambda":.8,"kl_coeff":.6,"grad_clip":.4,"gamma":1,
-"epsilon":0.9,
+"num_gpus":4,
+#"vf_loss_coeff":.4,
+#"momentum":.7,
+#"lr":1e-6,"lambda":.8,"kl_coeff":.6,"grad_clip":.400,"gamma":0,
+#"epsilon":0.9,
 "entropy_coeff":1e-3,
-"decay":.98,
-"clip_param":.04, 
-
-
-
-
-"num_envs_per_worker":1,
+#"decay":.98,
+#"clip_param":.04, 
+#"sgd_minibatch_size":8,
+#"num_envs_per_worker":1,
         'num_workers':1,
 #"evaluation_num_workers":1,
-'num_cpus_per_worker':48,
+#'num_cpus_per_worker':48,
 'num_gpus_per_worker':4,
 "evaluation_interval":10,
-"rollout_fragment_length":4, #was20
-"train_batch_size":4,
-"replay_buffer_num_slots":30,
+"rollout_fragment_length":8, #was20
+"train_batch_size":128,
+#"replay_buffer_num_slots":30,
   "model":{
    "custom_model":"FCN",
 "fcnet_hiddens":[],

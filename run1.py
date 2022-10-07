@@ -45,17 +45,16 @@ def train_ppo_model():
 "stddev":1e-2
 },
             "gamma": 0,
-"train_batch_size":10,
-""
-            "target_noise":.6,
-            "target_noise_clip":.5,
-            "critic_lr":  1e-5,
-            "actor_lr": 1e-5,
-            "tau": 1e-6,
+"train_batch_size":4,
+            "target_noise":.4,
+            "target_noise_clip":.6,
+            "critic_lr":  2e-5,
+            "actor_lr": 2e-5,
+            "tau": 1e-7,
 
 
-            "lr": 2e-5,
-            "grad_clip": 10,
+            "lr": 5e-4,
+            "grad_clip": 40,
 
   }
    )

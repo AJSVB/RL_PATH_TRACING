@@ -99,6 +99,8 @@ class PhysicSimulation:
     
     def sample(self,x,quantile):
         max = np.quantile(x,1-self.sppps*quantile)
+        if random.random()>.9:
+            print(max)
         idx = np.where(x>=max)[0]
         max_l = np.round(self.HEIGHT*self.WIDTH*self.sppps*quantile)
         #print(max_l)
@@ -124,8 +126,6 @@ class PhysicSimulation:
         self.observations[idx,:]=self.observations[idx,:]*indexes
         self.variance[idx,:]=self.variance[idx,:]*indexes
 
-
-  #      print(x)
   #      print(1-self.sppps*np.array(self.partition))
    #     print(np.quantile(x,1-self.sppps*np.array(self.partition)))
         for i in self.partition:

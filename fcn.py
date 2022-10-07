@@ -38,13 +38,13 @@ class FCN(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
-        c=5
+        c=1
         model_config["conv_filters"] = [
-                                        [64,[c,c], [1,1]],
-                                        [64,[c,c], [1,1]],
-                                        [64,[c,c], [1,1]],
-                                        [64,[c,c], [1,1]],
-                                        [1,[c,c], [1,1]],
+#                                        [64,[c,c], [1,1]],
+#                                        [64,[c,c], [1,1]],
+#                                        [64,[c,c], [1,1]],
+#                                        [64,[c,c], [1,1]],
+#                                        [1,[c,c], [1,1]],
                                         [1,[c,c], [1,1]],
                                         [1,[c,c], [1,1]]]
 
@@ -71,7 +71,7 @@ class FCN(TorchModelV2, nn.Module):
                 )
             )
             layers.append(nn.ReLU())
-            in_channels = 64
+ #           in_channels = 64
             in_size = out_size
 
         self._convs = nn.Sequential(*layers[:-6])
