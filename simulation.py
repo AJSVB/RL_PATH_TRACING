@@ -1,4 +1,3 @@
-
 import math
 import torchvision
 import torchvision.transforms as transforms
@@ -92,7 +91,7 @@ class PhysicSimulation:
         self.permutation = torch.randperm(self.max)
         self.observations = self.dataset[:,:,self.permutation[0]] #self.albedo #torch.zeros(self.dataset.shape[:2])
  
-        self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)
+        self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int) 
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
         self.count = 1 #
@@ -137,6 +136,9 @@ class PhysicSimulation:
         self.variance[idx,:]=self.variance[idx,:]/indexes
         self.updated=False
 
+        if torch.sum(self.indexes)==2*self.observations.shape[0]:
+            print(torch.var(self.indexes.float()))
+
     def out(self,data):
         return data.view(self.HEIGHT,self.WIDTH,*data.shape[1:])    
 
@@ -156,10 +158,11 @@ class PhysicSimulation:
     def observe(self):
         a=self.render()
         rendersquared = self.observations**2
-        temp = torch.cat((self.out(self.observations.mean(1).unsqueeze(1)),\
+        temp = torch.cat((
+#self.out(self.observations.mean(1).unsqueeze(1)),\
 self.out(self.indexes/self.max).unsqueeze(-1), \
-self.out((self.variance - rendersquared).mean(1).unsqueeze(1)),self.add, \
- norm((self.out(self.observations)-a),self.denoising) \
+#self.out((self.variance - rendersquared).mean(1).unsqueeze(1)),self.add, \
+# norm((self.out(self.observations)-a),self.denoising) \
   ),axis=-1).permute(2,0,1)
     
 #        print(temp.shape)
@@ -220,7 +223,7 @@ class CustomEnv(gym.Env):
 
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (9,self.HEIGHT,self.WIDTH), dtype=np.float32) #MACHINE PRECISION
+                    (1,self.HEIGHT,self.WIDTH), dtype=np.float32) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
 
     self.spec = Spec(self.max)
