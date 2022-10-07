@@ -99,8 +99,6 @@ class PhysicSimulation:
     
     def sample(self,x,quantile):
         max = np.quantile(x,1-self.sppps*quantile)
-        if random.random()>.9:
-            print(max)
         idx = np.where(x>=max)[0]
         max_l = np.round(self.HEIGHT*self.WIDTH*self.sppps*quantile)
         #print(max_l)
@@ -126,8 +124,6 @@ class PhysicSimulation:
         self.observations[idx,:]=self.observations[idx,:]*indexes
         self.variance[idx,:]=self.variance[idx,:]*indexes
 
-  #      print(1-self.sppps*np.array(self.partition))
-   #     print(np.quantile(x,1-self.sppps*np.array(self.partition)))
         for i in self.partition:
             self.sample(x,i)
 
@@ -159,13 +155,11 @@ class PhysicSimulation:
         a=self.render()
         rendersquared = self.observations**2
         temp = torch.cat((
-#self.out(self.observations.mean(1).unsqueeze(1)),\
+self.out(self.observations.mean(1).unsqueeze(1)),\
 self.out(self.indexes/self.max).unsqueeze(-1), \
-#self.out((self.variance - rendersquared).mean(1).unsqueeze(1)),self.add, \
-# norm((self.out(self.observations)-a),self.denoising) \
+self.out((self.variance - rendersquared).mean(1).unsqueeze(1)),self.add, \
+ norm((self.out(self.observations)-a),self.denoising) \
   ),axis=-1).permute(2,0,1)
-    
-#        print(temp.shape)
         return temp
 
 
@@ -223,7 +217,7 @@ class CustomEnv(gym.Env):
 
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
     self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (1,self.HEIGHT,self.WIDTH), dtype=np.float32) #MACHINE PRECISION
+                    (9,self.HEIGHT,self.WIDTH), dtype=np.float32) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
 
     self.spec = Spec(self.max)

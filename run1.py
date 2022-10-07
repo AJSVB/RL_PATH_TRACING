@@ -23,8 +23,6 @@ def train_ppo_model():
 'frame_number':1, 'spp':2, "sppps":.5,"denoising":True,"prob_sampling":True,"partition":[1],
             },
           'framework' :"torch",
-
-          'framework' :"torch",
 #"num_cpus_for_driver":46,
 "num_gpus":4,
 "use_state_preprocessor":True,
@@ -41,10 +39,10 @@ def train_ppo_model():
 "custom_model":"FCN1"
 },
 "exploration_config":{
-"random_timesteps":100,
-"stddev":1e-2
+"random_timesteps":200,
+"stddev":1e-1
 },
-            "gamma": 0,
+            "gamma": 1,
 "train_batch_size":4,
             "target_noise":.4,
             "target_noise_clip":.6,

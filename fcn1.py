@@ -40,7 +40,7 @@ class FCN(TorchModelV2, nn.Module):
     ):
         c=1
         model_config["conv_filters"] = [
-#                                        [64,[c,c], [1,1]],
+                                        [1,[c,c], [1,1]],
 #                                        [64,[c,c], [1,1]],
 #                                        [64,[c,c], [1,1]],
 #                                        [64,[c,c], [1,1]]
