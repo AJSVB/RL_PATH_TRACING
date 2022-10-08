@@ -44,8 +44,7 @@ class FCN(TorchModelV2, nn.Module):
 #                                        [64,[c,c], [1,1]],
 #                                        [64,[c,c], [1,1]],
 #                                        [64,[c,c], [1,1]],
-#                                        [1,[c,c], [1,1]],
-                                        [1,[c,c], [1,1]],
+                                        [2,[c,c], [1,1]],
                                         [1,[c,c], [1,1]]]
 
         TorchModelV2.__init__(
@@ -70,27 +69,24 @@ class FCN(TorchModelV2, nn.Module):
                 #    activation_fn=activation,
                 )
             )
-            layers.append(nn.ReLU())
- #           in_channels = 64
+#            layers.append(nn.ReLU())
+            in_channels = out_channels
             in_size = out_size
-
-        self._convs = nn.Sequential(*layers[:-6])
-        self.head = nn.Sequential(*layers[-2:])
-        self.head_std = nn.Sequential(*layers[-6:-4])
-        self.head_value = nn.Sequential(*layers[-4:-2])
+        self._convs = nn.Sequential(*layers[0:1])
+        self.head_value = nn.Sequential(*layers[1:2])
     def f(
         self,
         y,
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-         x = y #[CST*i:CST*(i+1),]
+         x = y
          x = self._convs(x)
          tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
-         out=self.head(x).reshape(*x.shape[:1],1,-1)
+         #out=self.head(x).reshape(*x.shape[:1],1,-1)
          self.tmp = tmp
-         std=self.head_std(x).reshape(*x.shape[:1],1,-1,1).mean(2)
-         return out,std
+         #std=self.head_std(x).reshape(*x.shape[:1],1,-1,1).mean(2)
+         return x #out,std
 
 
     @override(TorchModelV2)
@@ -101,10 +97,10 @@ class FCN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"]
-      out,std=self.f(x,state,seq_lens)
-      std = std.repeat(1,1,out.shape[-1])
-      t =  -10*std
-      out=torch.cat((out,t),1)
+      out =self.f(x,state,seq_lens)
+      #std = std.repeat(1,1,out.shape[-1])
+      #t =  -10*std
+      #out=torch.cat((out,t),1)
       out = out.reshape(input_dict["obs"].shape[0], -1)
       return  out, state
 

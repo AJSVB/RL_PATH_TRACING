@@ -40,7 +40,7 @@ class FCN(TorchModelV2, nn.Module):
     ):
         c=1
         model_config["conv_filters"] = [
-                                        [64,[c,c], [1,1]],
+#                                        [64,[c,c], [1,1]],
                                         [1,[c,c], [1,1]],
 #                                        [64,[c,c], [1,1]],
 #                                        [64,[c,c], [1,1]]
@@ -68,7 +68,7 @@ class FCN(TorchModelV2, nn.Module):
                 #    activation_fn=activation,
                 )
             )
-            layers.append(nn.ReLU())
+#            layers.append(nn.ReLU())
             in_channels = out_channels
             in_size = out_size
         self.num_outputs = w*h
@@ -92,10 +92,8 @@ class FCN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"]
-     # print(x)
-      return x,state
-#      out=self.f(x,state,seq_lens)
-#      return  out, state
+      out=self.f(x,state,seq_lens)
+      return  out, state
 
     
 from ray.rllib.models import ModelCatalog

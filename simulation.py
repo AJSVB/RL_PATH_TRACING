@@ -89,46 +89,42 @@ class PhysicSimulation:
         self.denoising=denoising
     def reset(self):
         self.permutation = torch.randperm(self.max)
-        self.observations = self.dataset[:,:,self.permutation[0]] #self.albedo  #torch.zeros(self.dataset.shape[:2])
+        self.observations = self.dataset[:,:,self.permutation[0]] #self.albedo #torch.zeros(self.dataset.shape[:2])
  
-        self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int)  #
+        self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int) 
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
-        self.count = 1
+        self.count = 1 #
         self.updated=False
     
-    def sample(self,x,quantile,first):
-        if first is not None:
-          idx=first
-        else:
-          max = np.quantile(x,1-self.sppps*quantile)
-          idx = np.where(x>=max)[0]
-          max_l = np.round(self.HEIGHT*self.WIDTH*self.sppps*quantile)
-          a = (np.random.permutation(len(idx))[:int(max_l)])
-          idx = idx[a]
+    def sample(self,x,quantile):
+        max = np.quantile(x,1-self.sppps*quantile)
+        idx = np.where(x>=max)[0]
+        max_l = np.round(self.HEIGHT*self.WIDTH*self.sppps*quantile)
+        #print(max_l)
+        #print(int(max_l))
+        a = (np.random.permutation(len(idx))[:int(max_l)])
+        idx = idx[a]
+#        print(len(idx))
         indexes = self.indexes[idx] 
         self.indexes[idx]= indexes+1
         temp = self.dataset[idx,:,self.permutation[self.count]]
         self.observations[idx,:] = self.observations[idx,:] +  temp  #TODO bia>
         self.variance[idx,:] = self.variance[idx,:] + temp**2 
-        self.count+=1 #
+        self.count+=1
 
 
     def simulate(self, x):
         x=x.flatten()
 
+
         max = np.quantile(x,1-self.sppps*self.partition[0])
         idx = np.where(x>=max)[0]
-        max_l = np.round(self.HEIGHT*self.WIDTH*self.sppps*self.partition[0])
-        a = (np.random.permutation(len(idx))[:int(max_l)])
-        idx = idx[a]
-
         indexes = self.indexes[idx].unsqueeze(1)#.repeat(1,3)
         self.observations[idx,:]=self.observations[idx,:]*indexes
         self.variance[idx,:]=self.variance[idx,:]*indexes
 
-        self.sample(x,0,idx)
-        for i in self.partition[1:]:
+        for i in self.partition:
             self.sample(x,i)
 
         indexes = self.indexes[idx].unsqueeze(1).repeat(1,3)
@@ -210,13 +206,7 @@ class CustomEnv(gym.Env):
     self.WIDTH =   1280
     self.partition = env_config["partition"]
     self.CST=len(self.partition)
-
-
-    if False:
-        self.max = int(self.spp/self.sppps)*self.CST 
-    else:
-        self.max = (int(self.spp/self.sppps) - int(1/self.sppps) ) *self.CST+1
-
+    self.max = (int(self.spp/self.sppps) - int(1/self.sppps) ) *self.CST +1 #
     self.id = env_config.vector_index
     self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
 
@@ -236,22 +226,22 @@ class CustomEnv(gym.Env):
 
   def step(self, action):
 #    a=time.time()
+    gd=self.ground_truth
     old = self.simulation.render()
+    i=-0 #works with 0 outside of tune.py TODO
+    old = MultiSSIM([old], [gd],i)[0]
     self.simulation.simulate(action)
  #   print("RT"+str(time.time()-a))
     observation = self.simulation.observe()
   #  print("observation"+str(time.time()-a))
-    gd=self.ground_truth
     new = self.simulation.render()
     import ray
-    i=-0 #works with 0 outside of tune.py TODO
-    old = MultiSSIM([old], [gd],i)[0]
     new = MultiSSIM([new], [gd],i)[0]
 #    print(time.time()-a)
     if self.top<new:
         print(new)
         self.top = new
-        if self.top>.97:
+        if self.top>.973:
          self.insight()
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count

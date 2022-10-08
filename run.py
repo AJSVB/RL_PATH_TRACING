@@ -41,11 +41,11 @@ def train_ppo_model():
 #"vf_loss_coeff":.4,
 #"momentum":.7,
 #"lr":1e-6,"lambda":.8,"kl_coeff":.6,"grad_clip":.400,"gamma":0,
-#"epsilon":0.9,
-"entropy_coeff":1e-3,
+#"epsilon":0.4,
+#"entropy_coeff":1e-3,
 #"decay":.98,
 #"clip_param":.04, 
-#"sgd_minibatch_size":8,
+"sgd_minibatch_size":8,
 #"num_envs_per_worker":1,
         'num_workers':1,
 #"evaluation_num_workers":1,
@@ -53,7 +53,6 @@ def train_ppo_model():
 'num_gpus_per_worker':4,
 "evaluation_interval":10,
 "rollout_fragment_length":8, #was20
-"train_batch_size":128,
 #"replay_buffer_num_slots":30,
   "model":{
    "custom_model":"FCN",

@@ -1,4 +1,3 @@
-
 import fcn
 import fcn1
 import ray
@@ -20,7 +19,7 @@ def train_ppo_model():
     a = time.time()
     algo = td3.TD3(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':2, "sppps":.5,"denoising":True,"prob_sampling":True,"partition":[1],
+'frame_number':1, 'spp':2, "sppps":.5,"denoising":False,"prob_sampling":True,"partition":[1],
             },
           'framework' :"torch",
 #"num_cpus_for_driver":46,
@@ -30,8 +29,8 @@ def train_ppo_model():
 "critic_hiddens":  [],
 "min_sample_timesteps_per_iteration":20,
 "replay_buffer_config":{
-"capacity":500,
-"learning_starts":20,
+"capacity":800,
+"learning_starts":200,
 },
 "model":{
 "fcnet_hiddens":[],
@@ -42,9 +41,9 @@ def train_ppo_model():
 "random_timesteps":200,
 "stddev":1e-1
 },
-            "gamma": 1,
+            "gamma": 0,
 "train_batch_size":4,
-            "target_noise":.4,
+            "target_noise": .4,
             "target_noise_clip":.6,
             "critic_lr":  2e-5,
             "actor_lr": 2e-5,
