@@ -31,7 +31,7 @@ def train_ppo_model():
 "min_sample_timesteps_per_iteration":20,
 "replay_buffer_config":{
 "capacity":500,
-"learning_starts":0,
+"learning_starts":20,
 },
 "model":{
 "fcnet_hiddens":[],

@@ -111,7 +111,7 @@ class PhysicSimulation:
         temp = self.dataset[idx,:,self.permutation[self.count]]
         self.observations[idx,:] = self.observations[idx,:] +  temp  #TODO bia>
         self.variance[idx,:] = self.variance[idx,:] + temp**2 
-        self.count+=1
+        self.count+=1 #
 
 
     def simulate(self, x):

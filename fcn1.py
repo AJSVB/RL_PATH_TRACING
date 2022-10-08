@@ -92,8 +92,10 @@ class FCN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"]
-      out=self.f(x,state,seq_lens)
-      return  out, state
+     # print(x)
+      return x,state
+#      out=self.f(x,state,seq_lens)
+#      return  out, state
 
     
 from ray.rllib.models import ModelCatalog
