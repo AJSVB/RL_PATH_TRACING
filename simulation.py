@@ -96,12 +96,7 @@ class PhysicSimulation:
         self.count = 1 #
         self.updated=False
     
-    def sample(self,x,quantile):
-        max = np.quantile(x,1-self.sppps*quantile)
-        idx = np.where(x>=max)[0]
-        max_l = np.round(self.HEIGHT*self.WIDTH*self.sppps*quantile)
-        a = (np.random.permutation(len(idx))[:int(max_l)])
-        idx = idx[a]
+    def sample(self,idx):
         indexes = self.indexes[idx] 
         self.indexes[idx]= indexes+1
         temp = self.dataset[idx,:,self.permutation[self.count]]
@@ -112,16 +107,24 @@ class PhysicSimulation:
 
     def simulate(self, x):
         x=x.flatten()
+       # print(x)
+        e=np.exp(x)
+        s=np.rint(self.sppps*self.HEIGHT*self.WIDTH*e/np.sum(e)).astype(int)
+        print(np.sum(s))
+       # print(np.max(s))
+       # print(np.min(s))
 
-
-        max = np.quantile(x,1-self.sppps*self.partition[0])
-        idx = np.where(x>=max)[0]
+        idxs = []
+        for i in range(min(10,np.max(s))):
+          idxs.append(np.where(s>i)[0])
+        idx=idxs[0]
         indexes = self.indexes[idx].unsqueeze(1)#.repeat(1,3)
         self.observations[idx,:]=self.observations[idx,:]*indexes
         self.variance[idx,:]=self.variance[idx,:]*indexes
 
-        for i in self.partition:
-            self.sample(x,i)
+
+        for x in idxs:
+            self.sample(x)
 
         indexes = self.indexes[idx].unsqueeze(1) #.repeat(1,3)
         self.observations[idx,:]=self.observations[idx,:]/indexes
@@ -202,7 +205,7 @@ class CustomEnv(gym.Env):
     self.HEIGHT = 720 
     self.WIDTH =   1280
     self.partition = env_config["partition"]
-    self.CST=len(self.partition)
+    self.CST= 10
     self.max = (int(self.spp/self.sppps) - int(1/self.sppps) ) *self.CST +1 #
     self.id = env_config.vector_index
     self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
@@ -212,8 +215,8 @@ class CustomEnv(gym.Env):
 
     self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
 
-    self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
-    self.observation_space = spaces.Box(low=-1e-3, high=1, shape=
+    self.action_space = spaces.Box(low=-1e1,high=1e1,shape=(self.HEIGHT*self.WIDTH,))
+    self.observation_space = spaces.Box(low=-1e-2, high=1, shape=
                     (7,self.HEIGHT,self.WIDTH), dtype=np.float16) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
 
@@ -262,5 +265,5 @@ class CustomEnv(gym.Env):
     return self.simulation.render()
 
 def save(data,name):
-    img= T.ToPILImage()(torch.Tensor(data).permute([2,0,1]))
+    img= T.ToPILImage()(data.permute([2,0,1]).type(torch.float32))
     img.save(name)

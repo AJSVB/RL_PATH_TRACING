@@ -25,9 +25,9 @@ def train_ppo_model():
           'framework' :"torch",
 
 "num_gpus_per_worker":.12,
-"num_workers":16,
+"num_workers":12,
 "num_gpus":4,
-"num_cpus_per_worker":3,
+"num_cpus_per_worker":4,
 "use_state_preprocessor":True,
 "actor_hiddens": [],
 "critic_hiddens":  [],
