@@ -32,27 +32,27 @@ def generate_partition():
 
 def train_ppo_model():
     a = time.time()
-    algo = ppo.PPO(env=simulation.CustomEnv,config={
+    algo = appo.APPO(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':2, "sppps":.5,"denoising":True,"prob_sampling":True,"partition":[1]
+'frame_number':1, 'spp':2, "sppps":.5,"denoising":False,"prob_sampling":True,"partition":[1]
             },
           'framework' :"torch",
 "num_gpus":4,
-#"vf_loss_coeff":.4,
-#"momentum":.7,
-#"lr":1e-6,"lambda":.8,"kl_coeff":.6,"grad_clip":.400,"gamma":0,
-#"epsilon":0.4,
-#"entropy_coeff":1e-3,
-#"decay":.98,
-#"clip_param":.04, 
-"sgd_minibatch_size":8,
+"vf_loss_coeff":.4,
+"momentum":.9,
+"lr":1e-1,"lambda":.8,"kl_coeff":.6,"grad_clip":.400,"gamma":1,
+"epsilon":0.4,
+"entropy_coeff":1e-3,
+"decay":.98,
+"clip_param":.04, 
+"train_batch_size":32,
 #"num_envs_per_worker":1,
-        'num_workers':1,
+        'num_workers':16,
 #"evaluation_num_workers":1,
-#'num_cpus_per_worker':48,
-'num_gpus_per_worker':4,
+'num_cpus_per_worker':3,
+'num_gpus_per_worker':.12,
 "evaluation_interval":10,
-"rollout_fragment_length":8, #was20
+"rollout_fragment_length":2, #was20
 #"replay_buffer_num_slots":30,
   "model":{
    "custom_model":"FCN",
@@ -62,7 +62,7 @@ def train_ppo_model():
 }
 })
     # Train for one iteration.
-    for _ in range(50):
+    for _ in range(500):
          algo.train()
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.

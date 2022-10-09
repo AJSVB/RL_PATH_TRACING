@@ -25,16 +25,16 @@ def train_ppo_model():
           'framework' :"torch",
 
 "num_gpus_per_worker":.12,
-"num_workers":12,
+"num_workers":22,
 "num_gpus":4,
-"num_cpus_per_worker":4,
+"num_cpus_per_worker":2,
 "use_state_preprocessor":True,
 "actor_hiddens": [],
 "critic_hiddens":  [],
 "min_sample_timesteps_per_iteration":100,
 "replay_buffer_config":{
-"capacity":800,
-"learning_starts":800,
+"capacity":400,
+"learning_starts":400,
 },
 "model":{
 "fcnet_hiddens":[],

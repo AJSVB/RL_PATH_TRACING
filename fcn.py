@@ -96,7 +96,7 @@ class FCN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-      x=input_dict["obs"]
+      x=input_dict["obs"].type(torch.float32)
       out =self.f(x,state,seq_lens)
       #std = std.repeat(1,1,out.shape[-1])
       #t =  -10*std

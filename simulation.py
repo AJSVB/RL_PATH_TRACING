@@ -104,28 +104,26 @@ class PhysicSimulation:
         self.variance[idx,:] = self.variance[idx,:] + temp**2 
         self.count+=1
 
-
     def simulate(self, x):
-        x=x.flatten()
-       # print(x)
+        x=x.flatten().astype(np.float64)
         e=np.exp(x)
         s=np.rint(self.sppps*self.HEIGHT*self.WIDTH*e/np.sum(e)).astype(int)
-        print(np.sum(s))
-       # print(np.max(s))
-       # print(np.min(s))
+        if random.random()>.99:
+            print(np.sum(s))
 
         idxs = []
-        for i in range(min(10,np.max(s))):
+        for i in range( min(self.CST,np.max(s))):
           idxs.append(np.where(s>i)[0])
+
         idx=idxs[0]
         indexes = self.indexes[idx].unsqueeze(1)#.repeat(1,3)
         self.observations[idx,:]=self.observations[idx,:]*indexes
         self.variance[idx,:]=self.variance[idx,:]*indexes
 
-
+        temp = self.count
         for x in idxs:
             self.sample(x)
-
+        self.count=temp+self.CST
         indexes = self.indexes[idx].unsqueeze(1) #.repeat(1,3)
         self.observations[idx,:]=self.observations[idx,:]/indexes
         self.variance[idx,:]=self.variance[idx,:]/indexes
@@ -159,7 +157,8 @@ self.out(self.indexes/self.max).unsqueeze(-1), \
 self.out((self.variance - rendersquared)),self.add, \
  norm((self.out(self.observations)-a),self.denoising) \
   ),axis=-1).permute(2,0,1)
-        return temp
+#        print(temp.dtype)
+        return temp.type(torch.float16)
 
 
 class Spec:
@@ -206,7 +205,7 @@ class CustomEnv(gym.Env):
     self.WIDTH =   1280
     self.partition = env_config["partition"]
     self.CST= 10
-    self.max = (int(self.spp/self.sppps) - int(1/self.sppps) ) *self.CST +1 #
+    self.max = int((self.spp-1)/self.sppps)  *self.CST +1 #
     self.id = env_config.vector_index
     self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
 
