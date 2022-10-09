@@ -31,14 +31,14 @@ def get_truth(path,HEIGHT=480,WIDTH=640):
     image= Image.open(path)
     x = TF.to_tensor(image)
     x.unsqueeze_(0)
-    return x[:,:,-HEIGHT:,-WIDTH:]
+    return x[:,:,-HEIGHT:,-WIDTH:].type(torch.float16).mean(1).unsqueeze(1)
 
 
 def get_ith_image(path,i,frame_number = 1,HEIGHT=480,WIDTH=640):
     image = Image.open(path+str(frame_number).zfill(4) + "-" + str(i).zfill(5)+'.png0001.png')
     x = TF.to_tensor(image)
     x.unsqueeze_(0)
-    return x[:,:,-HEIGHT:,-WIDTH:]
+    return x[:,:,-HEIGHT:,-WIDTH:].type(torch.float16).mean(1).unsqueeze(1)
 
 def aggregate_by_pixel(path,number_images,frame_number = 1,HEIGHT=480,WIDTH=640):
     dataset = torch.cat([get_ith_image(path,i,frame_number,HEIGHT,WIDTH) for i in range(number_images)],0)
@@ -54,7 +54,7 @@ def get_add(path,detail):
     x = TF.to_tensor(image)
     if x[0,:].equal(x[1,:]):
         x = x[0:1,:]
-    return x
+    return x.type(torch.float16).mean(0).unsqueeze(0)
 
 def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
     dataset = torch.cat([get_add(path,a) for a in  ["Normal","DiffCol","Mist"]])
@@ -90,7 +90,6 @@ class PhysicSimulation:
     def reset(self):
         self.permutation = torch.randperm(self.max)
         self.observations = self.dataset[:,:,self.permutation[0]] #self.albedo #torch.zeros(self.dataset.shape[:2])
- 
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int) 
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
@@ -101,15 +100,12 @@ class PhysicSimulation:
         max = np.quantile(x,1-self.sppps*quantile)
         idx = np.where(x>=max)[0]
         max_l = np.round(self.HEIGHT*self.WIDTH*self.sppps*quantile)
-        #print(max_l)
-        #print(int(max_l))
         a = (np.random.permutation(len(idx))[:int(max_l)])
         idx = idx[a]
-#        print(len(idx))
         indexes = self.indexes[idx] 
         self.indexes[idx]= indexes+1
         temp = self.dataset[idx,:,self.permutation[self.count]]
-        self.observations[idx,:] = self.observations[idx,:] +  temp  #TODO bia>
+        self.observations[idx,:] = self.observations[idx,:] +  temp  
         self.variance[idx,:] = self.variance[idx,:] + temp**2 
         self.count+=1
 
@@ -127,7 +123,7 @@ class PhysicSimulation:
         for i in self.partition:
             self.sample(x,i)
 
-        indexes = self.indexes[idx].unsqueeze(1).repeat(1,3)
+        indexes = self.indexes[idx].unsqueeze(1) #.repeat(1,3)
         self.observations[idx,:]=self.observations[idx,:]/indexes
         self.variance[idx,:]=self.variance[idx,:]/indexes
         self.updated=False
@@ -136,7 +132,7 @@ class PhysicSimulation:
             print(torch.var(self.indexes.float()))
 
     def out(self,data):
-        return data.view(self.HEIGHT,self.WIDTH,*data.shape[1:])    
+        return data.view(self.HEIGHT,self.WIDTH,*data.shape[1:]).type(torch.float16)    
 
     def render(self):        
       if self.denoising:
@@ -174,7 +170,8 @@ import ray
 
 def MultiSSIM(a,b,gpu_id):
   if gpu_id==-1:
-
+    a[0] = a[0].type(torch.float32)
+    b[0] = b[0].type(torch.float32)
     d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0)
     e = torch.cat([c for c in b],0)
     loss=MS_SSIM(data_range=1,size_average=False)
@@ -183,7 +180,7 @@ def MultiSSIM(a,b,gpu_id):
   else:
     d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0).cuda(gpu_id)
     e = torch.cat([c for c in b],0).cuda(gpu_id)
-    loss=MS_SSIM(data_range=1,size_average=False).cuda(gpu_id)
+    loss=MS_SSIM(data_range=1,size_average=False,channel=1).cuda(gpu_id)
     return loss(d,e).cpu() 
 
 
@@ -216,8 +213,8 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
 
     self.action_space = spaces.Box(low=0,high=1,shape=(self.HEIGHT*self.WIDTH,))
-    self.observation_space = spaces.Box(low=-1e-6, high=1, shape=
-                    (17,self.HEIGHT,self.WIDTH), dtype=np.float32) #MACHINE PRECISION
+    self.observation_space = spaces.Box(low=-1e-3, high=1, shape=
+                    (7,self.HEIGHT,self.WIDTH), dtype=np.float16) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
 
     self.spec = Spec(self.max)
@@ -238,7 +235,7 @@ class CustomEnv(gym.Env):
     import ray
     new = MultiSSIM([new], [gd],i)[0]
 #    print(time.time()-a)
-    if self.top<new:
+    if random.random()>.9 and self.top<new:
         print(new)
         self.top = new
         if self.top>.973:
@@ -247,8 +244,6 @@ class CustomEnv(gym.Env):
     done = self.spec.max_episode_steps <= self.simulation.count
 #    print("wole loop" + str(time.time()-a)) 
   
-
-
     return observation.numpy(),reward.detach().numpy(),done, {}
 
   def insight(self): 

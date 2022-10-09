@@ -17,20 +17,24 @@ import random
 
 def train_ppo_model():
     a = time.time()
+#    algo = apex.ApexDDPG(env=simulation.CustomEnv,config={
     algo = td3.TD3(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
 'frame_number':1, 'spp':2, "sppps":.5,"denoising":False,"prob_sampling":True,"partition":[1],
             },
           'framework' :"torch",
-#"num_cpus_for_driver":46,
+
+"num_gpus_per_worker":.12,
+"num_workers":16,
 "num_gpus":4,
+"num_cpus_per_worker":3,
 "use_state_preprocessor":True,
 "actor_hiddens": [],
 "critic_hiddens":  [],
-"min_sample_timesteps_per_iteration":20,
+"min_sample_timesteps_per_iteration":100,
 "replay_buffer_config":{
 "capacity":800,
-"learning_starts":200,
+"learning_starts":800,
 },
 "model":{
 "fcnet_hiddens":[],
@@ -38,20 +42,21 @@ def train_ppo_model():
 "custom_model":"FCN1"
 },
 "exploration_config":{
-"random_timesteps":200,
-"stddev":1e-1
+"random_timesteps":800,
+"stddev":1e-3,
+"final_scale":0
 },
-            "gamma": 0,
+            "gamma": 0.27,
 "train_batch_size":4,
-            "target_noise": .4,
-            "target_noise_clip":.6,
-            "critic_lr":  2e-5,
-            "actor_lr": 2e-5,
-            "tau": 1e-7,
+            "target_noise": .27,
+            "target_noise_clip":.8,
+            "critic_lr":  1e-5,
+            "actor_lr": 3e-5,
+            "tau": 3e-5,
+            "l2_reg":3e-5,
 
-
-            "lr": 5e-4,
-            "grad_clip": 40,
+            "lr": 1e-6,
+            "grad_clip": 1,
 
   }
    )

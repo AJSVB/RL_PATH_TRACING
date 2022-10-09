@@ -41,7 +41,7 @@ class FCN(TorchModelV2, nn.Module):
         c=1
         model_config["conv_filters"] = [
 #                                        [64,[c,c], [1,1]],
-                                        [1,[c,c], [1,1]],
+                                        [3,[c,c], [1,1]],
 #                                        [64,[c,c], [1,1]],
 #                                        [64,[c,c], [1,1]]
 ]
@@ -92,6 +92,7 @@ class FCN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"]
+      x=x.type(torch.float32)
       out=self.f(x,state,seq_lens)
       return  out, state
 
