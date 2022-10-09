@@ -42,20 +42,20 @@ def train_ppo_model():
 "custom_model":"FCN1"
 },
 "exploration_config":{
-"random_timesteps":800,
+"random_timesteps":400,
 "stddev":1e-3,
-"final_scale":0
+#"final_scale":0
 },
             "gamma": 0.27,
 "train_batch_size":4,
             "target_noise": .27,
             "target_noise_clip":.8,
-            "critic_lr":  1e-1,
-            "actor_lr": 3e-1,
-            "tau": 3e-5,
+            "critic_lr":  1e-2,
+            "actor_lr": 3e-5,
+            "tau": 3e-2,
             "l2_reg":3e-5,
 
-            "lr": 1e-1,
+            "lr": 1e-2,
             "grad_clip": 1,
 
   }
