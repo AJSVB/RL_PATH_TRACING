@@ -50,12 +50,12 @@ def train_ppo_model():
 "train_batch_size":4,
             "target_noise": .27,
             "target_noise_clip":.8,
-            "critic_lr":  1e-5,
-            "actor_lr": 3e-5,
+            "critic_lr":  1e-1,
+            "actor_lr": 3e-1,
             "tau": 3e-5,
             "l2_reg":3e-5,
 
-            "lr": 1e-6,
+            "lr": 1e-1,
             "grad_clip": 1,
 
   }
