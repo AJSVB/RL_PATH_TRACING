@@ -107,7 +107,14 @@ class PhysicSimulation:
     def simulate(self, x):
         x=x.flatten().astype(np.float64)
         e=np.exp(x)
-        s=np.rint(self.sppps*self.HEIGHT*self.WIDTH*e/np.sum(e)).astype(int)
+        m=self.sppps*self.WIDTH*self.HEIGHT/4
+        dic=1
+
+        s=np.round(m*e/np.sum(e)).astype(int)
+        while np.sum(s)>1.1*m:
+          dic=dic*1.1
+          s=np.round(m*e/np.sum(e)/dic).astype(int)
+        
         if random.random()>.99:
             print(np.sum(s))
 
@@ -214,29 +221,27 @@ class CustomEnv(gym.Env):
 
     self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
 
-    self.action_space = spaces.Box(low=-1e1,high=1e1,shape=(self.HEIGHT*self.WIDTH,))
+    self.action_space = spaces.Box(low=-1e1,high=1e1,shape=(int(self.HEIGHT*self.WIDTH/4),))
     self.observation_space = spaces.Box(low=-1e-2, high=1, shape=
-                    (7,self.HEIGHT,self.WIDTH), dtype=np.float16) #MACHINE PRECISION
+                    (7,int(self.HEIGHT/2),int(self.WIDTH/2)), dtype=np.float16) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
-
-    self.spec = Spec(self.max)
     self.ground_truth = get_truth("/home/ascardigli/datasets/temple/"+"truth.png",self.HEIGHT,self.WIDTH)
-    self.top = 0
+    self.spec = Spec(self.max)
+    self.counter= 0
+    self.top=0
 
   def step(self, action):
-#    a=time.time()
-    gd=self.ground_truth
-    old = self.simulation.render()
+    a,b,c,d=self.crop()
+    gd= self.ground_truth[:,:,a:b,c:d]
+    old = self.simulation.render()[a:b,c:d]
     i=-0 #works with 0 outside of tune.py TODO
     old = MultiSSIM([old], [gd],i)[0]
-    self.simulation.simulate(action)
- #   print("RT"+str(time.time()-a))
-    observation = self.simulation.observe()
-  #  print("observation"+str(time.time()-a))
-    new = self.simulation.render()
+    x=-100*np.ones(int(self.HEIGHT*self.WIDTH/4*self.counter))
+    self.simulation.simulate(np.concatenate((x,action)))
+    observation = self.simulation.observe()[:,a:b,c:d]
+    new = self.simulation.render()[a:b,c:d]
     import ray
     new = MultiSSIM([new], [gd],i)[0]
-#    print(time.time()-a)
     if random.random()>.9 and self.top<new:
         print(new)
         self.top = new
@@ -244,21 +249,36 @@ class CustomEnv(gym.Env):
          self.insight()
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count
-#    print("wole loop" + str(time.time()-a)) 
-  
+    #print(observation.shape)
+    #print(torch.min(observation))
+    #print(torch.max(observation))
     return observation.numpy(),reward.detach().numpy(),done, {}
 
   def insight(self): 
     img= self.simulation.indexes.unsqueeze(-1)
     norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
     te=str(random.random())
- #   print(te)
     save(self.simulation.out(norm),"/home/ascardigli/RL_PATH_TRACING/tmp/"+te+".png")
 
+
+  def crop(self):
+    counter=self.counter
+    a=int(self.HEIGHT/2)
+    b=int(self.WIDTH/2)
+    i=(counter%2)==1
+    j=counter>1
+    return a*i,a*(i+1),b*j,b*(j+1)
+    print(x.shape)
+    return x[:,a*i:a*(i+1),b*j:b*(j+1)]
     
   def reset(self):
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
-    return self.simulation.observe().numpy()
+    self.counter+=1
+    self.simulation.count=1
+    if self.counter==4:
+        self.counter=0
+        self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
+    a,b,c,d=self.crop()
+    return self.simulation.observe().numpy()[:,a:b,c:d]
     
   def render(self, mode='human', close=False):
     return self.simulation.render()

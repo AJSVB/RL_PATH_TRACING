@@ -50,7 +50,7 @@ def train_ppo_model():
         'num_workers':16,
 #"evaluation_num_workers":1,
 'num_cpus_per_worker':3,
-'num_gpus_per_worker':.12,
+'num_gpus_per_worker':.16,
 "evaluation_interval":10,
 "rollout_fragment_length":2, #was20
 #"replay_buffer_num_slots":30,

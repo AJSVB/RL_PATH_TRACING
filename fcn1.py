@@ -59,16 +59,16 @@ class FCN(TorchModelV2, nn.Module):
         for out_channels, kernel, stride in filters:
             padding, out_size = same_padding(in_size, kernel, stride)
             layers.append(
-                nn.Conv2d(
+                SlimConv2d(
                     in_channels,
                     out_channels,
                     kernel,
                     stride,
-                    padding[:2],
-                #    activation_fn=activation,
+                    padding,
+                    activation_fn="tanh",
                 )
             )
-#            layers.append(nn.ReLU())
+#            layers.append(nn.Tanh())
             in_channels = out_channels
             in_size = out_size
         self.num_outputs = w*h
