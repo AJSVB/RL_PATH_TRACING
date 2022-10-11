@@ -238,7 +238,7 @@ class CustomEnv(gym.Env):
     old = self.simulation.render()[a:b,c:d]
     i=-0 #works with 0 outside of tune.py TODO
     old = MultiSSIM([old], [gd],i)[0]
-    x=-100*np.ones(int(self.HEIGHT*self.WIDTH/L/L*self.counter))
+    x= np.zeros(int(self.HEIGHT*self.WIDTH/L/L*self.counter))
     self.simulation.simulate(np.concatenate((x,action)))
     observation = self.simulation.observe()[:,a:b,c:d]
     new = self.simulation.render()[a:b,c:d]
@@ -276,7 +276,7 @@ class CustomEnv(gym.Env):
     return x[:,a*i:a*(i+1),b*j:b*(j+1)]
     
   def reset(self):
-    self.counter+=4
+    self.counter+=1
     self.simulation.count=1
     if self.counter==4:
         self.counter=0

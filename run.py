@@ -34,15 +34,15 @@ def train_ppo_model():
     a = time.time()
     algo = appo.APPO(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':2, "sppps":.5,"denoising":False,"prob_sampling":True,"partition":[1]
+'frame_number':1, 'spp':2, "sppps":.1,"denoising":False,"prob_sampling":True,"partition":[1]
             },
           'framework' :"torch",
 "num_gpus":4,
 #"num_envs_per_worker":1,
-##        'num_workers':8,
+        'num_workers':8,
 #"evaluation_num_workers":1,
-'num_cpus_per_worker':12,
-'num_gpus_per_worker':1,
+'num_cpus_per_worker':6,
+'num_gpus_per_worker':.5,
 "rollout_fragment_length":4, #was20
 #"replay_buffer_num_slots":30,
   "model":{
