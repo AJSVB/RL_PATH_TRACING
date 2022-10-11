@@ -111,7 +111,9 @@ class PhysicSimulation:
         e= x
         m=self.sppps*self.WIDTH*self.HEIGHT/L/L
         dic=1
-
+        print(np.max(e))
+        print(np.min(e))
+        print(np.quantile(e,.9))
         s=np.round(m*e/np.sum(e)).astype(int)
         while np.sum(s)>1.1*m:
           dic=dic*1.1

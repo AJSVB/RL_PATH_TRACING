@@ -161,8 +161,11 @@ class UN(TorchModelV2, nn.Module):
     ) -> (TensorType, List[TensorType]):
 
       out=self.f(input_dict,state,seq_lens)
-
-      return 1+out.reshape(input_dict["obs"].shape[0], -1)/2, state
+      out = nn.ReLU()(out)
+      a=out[:,0]/100
+      b=out[:,1]
+      out = torch.cat((a,b),1)
+      return out.reshape(input_dict["obs"].shape[0], -1), state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:

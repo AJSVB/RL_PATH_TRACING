@@ -99,7 +99,7 @@ class FCN(TorchModelV2, nn.Module):
       x=input_dict["obs"].type(torch.float32)
       out =self.f(x,state,seq_lens)
       out = out.reshape(input_dict["obs"].shape[0], -1)
-      return  out, state
+      return  out/10, state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:
