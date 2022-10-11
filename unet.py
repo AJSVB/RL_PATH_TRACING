@@ -134,7 +134,7 @@ class UN(TorchModelV2, nn.Module):
            # in_channels = out_channels
             in_size = out_size
 
-        self.head = nn.Sequential(*(layers[-2:1]+[nn.Tanh()]))
+        self.head = nn.Sequential(*(layers[-2:1]))
         self.head_value = nn.Sequential(*layers[-1:0])
 
 
@@ -161,11 +161,10 @@ class UN(TorchModelV2, nn.Module):
     ) -> (TensorType, List[TensorType]):
 
       out=self.f(input_dict,state,seq_lens)
-      out = nn.ReLU()(out)
-      a=out[:,0]/100
-      b=out[:,1]
+      a=out[:,0]
+      b=nn.Sigmoid()(out[:,1])
       out = torch.cat((a,b),1)
-      return out.reshape(input_dict["obs"].shape[0], -1), state
+      return out.reshape(input_dict["obs"].shape[0], -1)/2, state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:

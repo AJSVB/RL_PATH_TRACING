@@ -34,7 +34,7 @@ def train_ppo_model():
     a = time.time()
     algo = appo.APPO(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':2, "sppps":.1,"denoising":False,"prob_sampling":True,"partition":[1]
+'frame_number':1, 'spp':2, "sppps":.5,"denoising":False,"prob_sampling":True,"partition":[1]
             },
           'framework' :"torch",
 "num_gpus":4,
@@ -50,7 +50,7 @@ def train_ppo_model():
 "fcnet_hiddens":[],
 "no_final_linear":True,
 },
-
+"normalize_actions":False,
 "train_batch_size":4 ,
             "gamma": 1,
             "kl_coeff": .6 ,
