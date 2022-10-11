@@ -108,7 +108,7 @@ class PhysicSimulation:
 
     def simulate(self, x):
         x=x.flatten().astype(np.float64)
-        e=np.exp(x)
+        e= x
         m=self.sppps*self.WIDTH*self.HEIGHT/L/L
         dic=1
 

@@ -42,7 +42,6 @@ class Encoder(nn.Module):
             x = block(x)
             ftrs.append(x)
             x = self.pool(x)
-            print(x.shape)
         return ftrs
 
 
@@ -59,7 +58,6 @@ class Decoder(nn.Module):
             enc_ftrs = self.crop(encoder_features[i], x)
             x        = torch.cat([x, enc_ftrs], dim=1)
             x        = self.dec_blocks[i](x)
-            print(x.shape)
         return x
     
     def crop(self, enc_ftrs, x):
@@ -82,7 +80,6 @@ class UNet(nn.Module):
         enc_ftrs = self.encoder(x)
         out      = self.decoder(enc_ftrs[::-1][0], enc_ftrs[::-1][1:])
         out      = self.head(out)
-        print(out.shape)
         return out
 from ray.rllib.models.utils import get_activation_fn, get_filter_config
 from ray.rllib.utils.annotations import override
@@ -115,32 +112,30 @@ class UN(TorchModelV2, nn.Module):
 
 
 
-        c=11
+        c=3
         filters = [
-                                        [1,[c,c], [1,1]],
-                                        [1,[c,c], [1,1]],
+                                        [2,[c,c], [1,1]],
                                         [1,[c,c], [1,1]]]
         layers=[]
         in_size = [w, h]
         for out_channels, kernel, stride in filters:
             padding, out_size = same_padding(in_size, kernel, stride)
             layers.append(
-                nn.Conv2d(
-                    in_channels,
+                SlimConv2d(
+                    2,
                     out_channels,
                     kernel,
                     stride,
-                    padding[:2],
+                    padding
                 #    activation_fn=activation,
                 )
             )
-            layers.append(nn.Tanh())
-            in_channels = out_channels
+           # layers.append(nn.Tanh())
+           # in_channels = out_channels
             in_size = out_size
 
-        self._convs = nn.Sequential(*layers[:-4])
-        self.head = nn.Sequential(*layers[-2:0])
-        self.head_value = nn.Sequential(*layers[-4:-2])
+        self.head = nn.Sequential(*(layers[-2:1]+[nn.Tanh()]))
+        self.head_value = nn.Sequential(*layers[-1:0])
 
 
     def f(
@@ -149,12 +144,12 @@ class UN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-        CST=1
-         x = input_dict
+         x = input_dict["obs"].type(torch.float32)
          x = self._convs(x)
-         tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
+         x = nn.Tanh()(x)
+         self.tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
          o=self.head(x)
-        return o
+         return o
 
 
     @override(TorchModelV2)
@@ -166,9 +161,8 @@ class UN(TorchModelV2, nn.Module):
     ) -> (TensorType, List[TensorType]):
 
       out=self.f(input_dict,state,seq_lens)
-      out = torch.cat((out,out*0.-10),1)
 
-      return out.reshape(input_dict["obs"].shape[0], -1), state
+      return 1+out.reshape(input_dict["obs"].shape[0], -1)/2, state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:
