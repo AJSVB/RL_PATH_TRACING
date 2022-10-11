@@ -46,7 +46,7 @@ def train_ppo_model():
 "rollout_fragment_length":4, #was20
 #"replay_buffer_num_slots":30,
   "model":{
-   "custom_model":"FCN",
+   "custom_model":"UN",
 "fcnet_hiddens":[],
 "no_final_linear":True,
 },

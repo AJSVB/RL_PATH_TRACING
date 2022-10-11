@@ -14,7 +14,7 @@ import denoising
 from filelock import FileLock 
 import os
 
-L=1
+L=2
 
 def norm(a,denoising):
     if not denoising:

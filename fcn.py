@@ -38,12 +38,12 @@ class FCN(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
-        c=1
+        c=3
         model_config["conv_filters"] = [
-#                                        [64,[c,c], [1,1]],
-#                                        [64,[c,c], [1,1]],
-#                                        [64,[c,c], [1,1]],
-#                                        [64,[c,c], [1,1]],
+                                        [64,[c,c], [1,1]],
+                                        [64,[c,c], [1,1]],
+                                        [64,[c,c], [1,1]],
+                                        [64,[c,c], [1,1]],
                                         [2,[c,c], [1,1]],
                                         [1,[c,c], [1,1]]]
 

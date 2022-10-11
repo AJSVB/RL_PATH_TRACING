@@ -150,18 +150,11 @@ class UN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
         CST=1
-        for i in range(int(input_dict["obs"].shape[0]/CST)):
-         x = input_dict["obs"][CST*i:CST*(i+1)]
+         x = input_dict
          x = self._convs(x)
          tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
          o=self.head(x)
-         if i==0:
-          self.tmp = tmp
-          out=o
-         else:
-          out=torch.cat((out,o),0)
-          self.tmp=torch.cat((self.tmp,tmp),0)
-        return out
+        return o
 
 
     @override(TorchModelV2)
@@ -172,16 +165,8 @@ class UN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
 
-
-      if input_dict["obs"].shape[0]==8:
-       with torch.no_grad():
-          out=self.f(input_dict,state,seq_lens)
-      else:
-          out=self.f(input_dict,state,seq_lens)
-
-#      GPUtil.showUtilization()
+      out=self.f(input_dict,state,seq_lens)
       out = torch.cat((out,out*0.-10),1)
-
 
       return out.reshape(input_dict["obs"].shape[0], -1), state
 
