@@ -26,7 +26,7 @@ if True:
             metric="episode_reward_max",
             mode="max",
             search_alg=hyperopt_search,
-            num_samples=1,time_budget_s=1e4,
+            num_samples=1,time_budget_s=5e2,
 max_concurrent_trials=1
         ),
         param_space={

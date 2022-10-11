@@ -38,7 +38,7 @@ class FCN(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
-        c=3
+        c=1
         model_config["conv_filters"] = [
 #                                        [64,[c,c], [1,1]],
 #                                        [64,[c,c], [1,1]],
@@ -66,15 +66,14 @@ class FCN(TorchModelV2, nn.Module):
                     kernel,
                     stride,
                     padding,
-                    activation_fn="tanh",
+#                    activation_fn="tanh",
                 )
             )
 #            layers.append(nn.Tanh())
             in_channels = out_channels
             in_size = out_size
-        C=1
-        self._convs = nn.Sequential(*layers[0:1*C])
-        self.head_value = nn.Sequential(*layers[1*C:2*C])
+        self._convs = nn.Sequential(*(layers[0:-1]+[nn.Tanh()]))
+        self.head_value = nn.Sequential(*layers[-1:])
     def f(
         self,
         y,

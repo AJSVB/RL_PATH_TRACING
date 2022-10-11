@@ -14,6 +14,8 @@ import denoising
 from filelock import FileLock 
 import os
 
+L=1
+
 def norm(a,denoising):
     if not denoising:
         return a*0
@@ -107,7 +109,7 @@ class PhysicSimulation:
     def simulate(self, x):
         x=x.flatten().astype(np.float64)
         e=np.exp(x)
-        m=self.sppps*self.WIDTH*self.HEIGHT/4
+        m=self.sppps*self.WIDTH*self.HEIGHT/L/L
         dic=1
 
         s=np.round(m*e/np.sum(e)).astype(int)
@@ -221,9 +223,9 @@ class CustomEnv(gym.Env):
 
     self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
 
-    self.action_space = spaces.Box(low=-1e1,high=1e1,shape=(int(self.HEIGHT*self.WIDTH/4),))
+    self.action_space = spaces.Box(low=-1e1,high=1e1,shape=(int(self.HEIGHT*self.WIDTH/L/L),))
     self.observation_space = spaces.Box(low=-1e-2, high=1, shape=
-                    (7,int(self.HEIGHT/2),int(self.WIDTH/2)), dtype=np.float16) #MACHINE PRECISION
+                    (7,int(self.HEIGHT/L),int(self.WIDTH/L)), dtype=np.float16) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
     self.ground_truth = get_truth("/home/ascardigli/datasets/temple/"+"truth.png",self.HEIGHT,self.WIDTH)
     self.spec = Spec(self.max)
@@ -236,7 +238,7 @@ class CustomEnv(gym.Env):
     old = self.simulation.render()[a:b,c:d]
     i=-0 #works with 0 outside of tune.py TODO
     old = MultiSSIM([old], [gd],i)[0]
-    x=-100*np.ones(int(self.HEIGHT*self.WIDTH/4*self.counter))
+    x=-100*np.ones(int(self.HEIGHT*self.WIDTH/L/L*self.counter))
     self.simulation.simulate(np.concatenate((x,action)))
     observation = self.simulation.observe()[:,a:b,c:d]
     new = self.simulation.render()[a:b,c:d]
@@ -262,9 +264,11 @@ class CustomEnv(gym.Env):
 
 
   def crop(self):
+    if L==1:
+        return 0,self.HEIGHT,0,self.WIDTH
     counter=self.counter
-    a=int(self.HEIGHT/2)
-    b=int(self.WIDTH/2)
+    a=int(self.HEIGHT/L)
+    b=int(self.WIDTH/L)
     i=(counter%2)==1
     j=counter>1
     return a*i,a*(i+1),b*j,b*(j+1)
@@ -272,7 +276,7 @@ class CustomEnv(gym.Env):
     return x[:,a*i:a*(i+1),b*j:b*(j+1)]
     
   def reset(self):
-    self.counter+=1
+    self.counter+=4
     self.simulation.count=1
     if self.counter==4:
         self.counter=0

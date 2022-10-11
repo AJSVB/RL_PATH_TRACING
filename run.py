@@ -29,7 +29,7 @@ def generate_partition():
     l.append(r)
     return np.sort(l)[::-1]
 
-
+import numpy.random as tune
 def train_ppo_model():
     a = time.time()
     algo = appo.APPO(env=simulation.CustomEnv,config={
@@ -38,28 +38,36 @@ def train_ppo_model():
             },
           'framework' :"torch",
 "num_gpus":4,
-"vf_loss_coeff":.4,
-"momentum":.9,
-"lr":1e-1,"lambda":.8,"kl_coeff":.6,"grad_clip":.400,"gamma":1,
-"epsilon":0.4,
-"entropy_coeff":1e-7,
-"decay":.98,
-"clip_param":.04, 
-"train_batch_size":32,
 #"num_envs_per_worker":1,
-        'num_workers':4,
+##        'num_workers':8,
 #"evaluation_num_workers":1,
-'num_cpus_per_worker':3,
-'num_gpus_per_worker':.16,
-"evaluation_interval":10,
-"rollout_fragment_length":2, #was20
+'num_cpus_per_worker':12,
+'num_gpus_per_worker':1,
+"rollout_fragment_length":4, #was20
 #"replay_buffer_num_slots":30,
   "model":{
    "custom_model":"FCN",
 "fcnet_hiddens":[],
 "no_final_linear":True,
+},
 
-}
+"train_batch_size":4 ,
+            "gamma": 1,
+            "kl_coeff": .6 ,
+            "lambda": .2 ,
+            "clip_param": .05 ,
+            "lr": .1 ,
+            "grad_clip": 40 ,
+          "decay": .99,
+          "momentum": .3,
+          "epsilon": .05 ,
+          "vf_loss_coeff":.6, #tune.uniform(0,1),
+          "entropy_coeff": 1e-4 #tune.choice([1e-6,1e-7,1e-8,1e-9,1e-5,1e-4,1e-3,1e-2,1e-1])
+
+
+
+
+
 })
     # Train for one iteration.
     for _ in range(500):
