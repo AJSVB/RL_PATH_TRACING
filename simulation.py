@@ -14,7 +14,7 @@ import denoising
 from filelock import FileLock 
 import os
 
-L=2
+L=1
 
 def norm(a,denoising):
     if not denoising:
@@ -33,14 +33,14 @@ def get_truth(path,HEIGHT=480,WIDTH=640):
     image= Image.open(path)
     x = TF.to_tensor(image)
     x.unsqueeze_(0)
-    return x[:,:,-HEIGHT:,-WIDTH:].type(torch.float16).mean(1).unsqueeze(1)
+    return x[:,:,-HEIGHT:,-WIDTH:].type(torch.float16) #.mean(1).unsqueeze(1)
 
 
 def get_ith_image(path,i,frame_number = 1,HEIGHT=480,WIDTH=640):
     image = Image.open(path+str(frame_number).zfill(4) + "-" + str(i).zfill(5)+'.png0001.png')
     x = TF.to_tensor(image)
     x.unsqueeze_(0)
-    return x[:,:,-HEIGHT:,-WIDTH:].type(torch.float16).mean(1).unsqueeze(1)
+    return x[:,:,-HEIGHT:,-WIDTH:].type(torch.float16) #.mean(1).unsqueeze(1)
 
 def aggregate_by_pixel(path,number_images,frame_number = 1,HEIGHT=480,WIDTH=640):
     dataset = torch.cat([get_ith_image(path,i,frame_number,HEIGHT,WIDTH) for i in range(number_images)],0)
@@ -107,15 +107,18 @@ class PhysicSimulation:
         self.count+=1
 
     def simulate(self, x):
-        x=x.flatten().astype(np.float64)
-        e= x
+        x=x.flatten().astype(np.float64) 
+        e= x*(x>0)
         m=self.sppps*self.WIDTH*self.HEIGHT/L/L
         dic=1
         s=np.round(m*e/np.sum(e)).astype(int)
         while np.sum(s)>1.1*m:
           dic=dic*1.1
           s=np.round(m*e/np.sum(e)/dic).astype(int)
-        
+        while np.sum(s)<.9*m:
+          dic=dic/1.1
+          s=np.round(m*e/np.sum(e)/dic).astype(int)
+
         if random.random()>.99:
             print(np.sum(s))
             print(np.quantile(e,.9))
@@ -123,7 +126,6 @@ class PhysicSimulation:
         idxs = []
         for i in range( min(self.CST,np.max(s))):
           idxs.append(np.where(s>i)[0])
-
         idx=idxs[0]
         indexes = self.indexes[idx].unsqueeze(1)#.repeat(1,3)
         self.observations[idx,:]=self.observations[idx,:]*indexes
@@ -161,10 +163,10 @@ class PhysicSimulation:
         a=self.render()
         rendersquared = self.observations**2
         temp = torch.cat((
-self.out(self.observations),\
+self.out(self.observations).mean(-1).unsqueeze(-1),\
 self.out(self.indexes/self.max).unsqueeze(-1), \
-self.out((self.variance - rendersquared)),self.add, \
- norm((self.out(self.observations)-a),self.denoising) \
+self.out((self.variance - rendersquared)).mean(-1).unsqueeze(-1),self.add, \
+ norm(((self.out(self.observations)-a).mean(-1).unsqueeze(-1)),self.denoising) \
   ),axis=-1).permute(2,0,1)
 #        print(temp.dtype)
         return temp.type(torch.float16)
@@ -191,7 +193,7 @@ def MultiSSIM(a,b,gpu_id):
   else:
     d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0).cuda(gpu_id)
     e = torch.cat([c for c in b],0).cuda(gpu_id)
-    loss=MS_SSIM(data_range=1,size_average=False,channel=1).cuda(gpu_id)
+    loss=MS_SSIM(data_range=1,size_average=False).cuda(gpu_id)
     return loss(d,e).cpu() 
 
 
@@ -238,8 +240,25 @@ class CustomEnv(gym.Env):
     old = self.simulation.render()[a:b,c:d]
     i=-0 #works with 0 outside of tune.py TODO
     old = MultiSSIM([old], [gd],i)[0]
-    x= np.zeros(int(self.HEIGHT*self.WIDTH/L/L*self.counter))
-    self.simulation.simulate(np.concatenate((x,action)))
+
+    if L!=1:
+        action=action.reshape(self.HEIGHT/L,self.WIDTH/L)
+        x= np.zeros(int(self.HEIGHT/L),int(self.WIDTH/L))
+        y= np.concatenate((x,x),0)
+        if self.counter==0:
+            action = np.concatenate((action,x),0)
+            action = np.concatenate((action,y),1)
+        if self.counter==1:
+            action = np.concatenate((x,action),0)
+            action = np.concatenate((action,y),1)
+        if self.counter==2:
+            action = np.concatenate((action,x),0)
+            action = np.concatenate((y,action),1)
+        if self.counter==3:
+            action = np.concatenate((x,action),0)
+            action = np.concatenate((y,action),1)
+        action = action.reshape(-1)
+    self.simulation.simulate(action)
     observation = self.simulation.observe()[:,a:b,c:d]
     new = self.simulation.render()[a:b,c:d]
     import ray
@@ -276,7 +295,7 @@ class CustomEnv(gym.Env):
     return x[:,a*i:a*(i+1),b*j:b*(j+1)]
     
   def reset(self):
-    self.counter+=1
+    self.counter+=4
     self.simulation.count=1
     if self.counter==4:
         self.counter=0
