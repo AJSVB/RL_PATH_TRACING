@@ -107,7 +107,7 @@ class PhysicSimulation:
         self.count+=1
 
     def simulate(self, x):
-        x=x.flatten().astype(np.float64) 
+        x=x.flatten().astype(np.float64) +1
         e= x*(x>0)
         m=self.sppps*self.WIDTH*self.HEIGHT/L/L
         dic=1
@@ -242,8 +242,8 @@ class CustomEnv(gym.Env):
     old = MultiSSIM([old], [gd],i)[0]
 
     if L!=1:
-        action=action.reshape(self.HEIGHT/L,self.WIDTH/L)
-        x= np.zeros(int(self.HEIGHT/L),int(self.WIDTH/L))
+        action=action.reshape(int(self.HEIGHT/L),int(self.WIDTH/L))
+        x= np.zeros((int(self.HEIGHT/L),int(self.WIDTH/L)))
         y= np.concatenate((x,x),0)
         if self.counter==0:
             action = np.concatenate((action,x),0)

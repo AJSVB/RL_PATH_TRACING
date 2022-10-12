@@ -65,7 +65,7 @@ class FCN(TorchModelV2, nn.Module):
                     kernel,
                     stride,
                     padding,
-                    activation_fn="tanh",
+#                    activation_fn="tanh",
                 )
             )
 #            layers.append(nn.Tanh())

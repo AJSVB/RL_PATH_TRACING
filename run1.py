@@ -36,6 +36,7 @@ def train_ppo_model():
 "capacity":400,
 "learning_starts":0,
 },
+"normalize_actions":False,
 "model":{
 "fcnet_hiddens":[],
 "no_final_linear":True,
