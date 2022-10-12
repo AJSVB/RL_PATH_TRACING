@@ -120,6 +120,7 @@ class PhysicSimulation:
 
 
     def simulate(self, x):
+        print(x)
         x = x - np.min(x)
         x=x.flatten().astype(np.float64)
         x=x*self.sppps*self.WIDTH*self.HEIGHT/L/L/sum(x)
@@ -260,9 +261,9 @@ class CustomEnv(gym.Env):
             action = np.concatenate((x,action),0)
             action = np.concatenate((y,action),1)
         action = action.reshape(-1)
-#    if self.simulation.count==1:
-#        print("on va la")
-#        action=np.concatenate((np.ones(int(self.HEIGHT*self.WIDTH/2)),\
+    #if self.simulation.count==1:
+    #    print("on va la")
+    #    action=np.concatenate((np.ones(int(self.HEIGHT*self.WIDTH/2)),\
 #np.zeros(int(self.HEIGHT*self.WIDTH/2))),0)
 #    else:
 #        action=np.concatenate((np.zeros(int(self.HEIGHT*self.WIDTH/2)),\

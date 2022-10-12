@@ -65,7 +65,7 @@ class FCN(TorchModelV2, nn.Module):
                     kernel,
                     stride,
                     padding,
-#                    activation_fn="tanh",
+                    activation_fn="linear",
                 )
             )
             in_channels = out_channels
@@ -79,7 +79,7 @@ class FCN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-         x = self._convs(x)/2 +1
+         x = self._convs(x)
          tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
          self.tmp = tmp
          return x #out,std
@@ -94,7 +94,10 @@ class FCN(TorchModelV2, nn.Module):
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"].type(torch.float32)
       out =self.f(x,state,seq_lens)
+      print(out[:,0].reshape(input_dict["obs"].shape[0], -1))
+      out[:,1] = out[:,0]*0 - 10
       out = out.reshape(input_dict["obs"].shape[0], -1)
+
       return  out, state
 
     @override(TorchModelV2)
