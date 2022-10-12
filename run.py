@@ -39,15 +39,15 @@ def train_ppo_model():
 "num_gpus":4,
 "vf_loss_coeff":.4,
 "momentum":.9,
-"lr":1e-1,"lambda":.8,"kl_coeff":.6,"grad_clip":.400,"gamma":1,
+"lr":.01,"lambda":.8,"kl_coeff":.6,"grad_clip":.400,"gamma":1,
 "epsilon":0.4,
 "entropy_coeff":1e-3,
 "decay":.98,
 "clip_param":.04, 
-"normalize_actions":False,
+#"normalize_actions":False,
 "train_batch_size":32,
 #"num_envs_per_worker":1,
-        'num_workers':16,
+        'num_workers':1,
 #"evaluation_num_workers":1,
 'num_cpus_per_worker':3,
 'num_gpus_per_worker':.16,
@@ -62,7 +62,7 @@ def train_ppo_model():
 }
 })
     # Train for one iteration.
-    for _ in range(500):
+    for _ in range(50):
          algo.train()
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.

@@ -106,22 +106,28 @@ class PhysicSimulation:
         self.variance[idx,:] = self.variance[idx,:] + temp**2 
         self.count+=1
 
-    def simulate(self, x):
-        x=x.flatten().astype(np.float64) +1
-        e= x*(x>0)
-        m=self.sppps*self.WIDTH*self.HEIGHT/L/L
-        dic=1
-        s=np.round(m*e/np.sum(e)).astype(int)
-        while np.sum(s)>1.1*m:
-          dic=dic*1.1
-          s=np.round(m*e/np.sum(e)/dic).astype(int)
-        while np.sum(s)<.9*m:
-          dic=dic/1.1
-          s=np.round(m*e/np.sum(e)/dic).astype(int)
 
+    def round_retain_sum(self,x):
+     a=time.time()
+     N = np.round(np.sum(x)).astype(int)
+     y = x.astype(int)
+     M=np.sum(y)
+     K = N - M 
+     z = x-y 
+     idx = np.argsort(z)[-K:]
+     y[idx] +=1     
+     return y
+
+
+    def simulate(self, x):
+        x=x.flatten().astype(np.float64)
+        x=x*self.sppps*self.WIDTH*self.HEIGHT/L/L/sum(x)
+        s=np.array(self.round_retain_sum(x))
+#        s = np.random.choice(range(len(x)),size=int(m),p=x)
+#        s= np.bincount(s)
         if random.random()>.99:
+            print(s)
             print(np.sum(s))
-            print(np.quantile(e,.9))
 
         idxs = []
         for i in range( min(self.CST,np.max(s))):
@@ -163,10 +169,10 @@ class PhysicSimulation:
         a=self.render()
         rendersquared = self.observations**2
         temp = torch.cat((
-self.out(self.observations).mean(-1).unsqueeze(-1),\
+#self.out(self.observations).mean(-1).unsqueeze(-1),\
 self.out(self.indexes/self.max).unsqueeze(-1), \
-self.out((self.variance - rendersquared)).mean(-1).unsqueeze(-1),self.add, \
- norm(((self.out(self.observations)-a).mean(-1).unsqueeze(-1)),self.denoising) \
+#self.out((self.variance - rendersquared)).mean(-1).unsqueeze(-1),self.add, \
+# norm(((self.out(self.observations)-a).mean(-1).unsqueeze(-1)),self.denoising) \
   ),axis=-1).permute(2,0,1)
 #        print(temp.dtype)
         return temp.type(torch.float16)
@@ -225,9 +231,9 @@ class CustomEnv(gym.Env):
 
     self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
 
-    self.action_space = spaces.Box(low=-1e1,high=1e1,shape=(int(self.HEIGHT*self.WIDTH/L/L),))
+    self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH/L/L),))
     self.observation_space = spaces.Box(low=-1e-2, high=1, shape=
-                    (7,int(self.HEIGHT/L),int(self.WIDTH/L)), dtype=np.float16) #MACHINE PRECISION
+                    (1,int(self.HEIGHT/L),int(self.WIDTH/L)), dtype=np.float16) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
     self.ground_truth = get_truth("/home/ascardigli/datasets/temple/"+"truth.png",self.HEIGHT,self.WIDTH)
     self.spec = Spec(self.max)
@@ -258,12 +264,20 @@ class CustomEnv(gym.Env):
             action = np.concatenate((x,action),0)
             action = np.concatenate((y,action),1)
         action = action.reshape(-1)
+#    if self.simulation.count==1:
+#        print("on va la")
+#        action=np.ones(int(self.HEIGHT*self.WIDTH/2))
+#    else:
+#       action=np.concatenate((np.zeros(int(self.HEIGHT*self.WIDTH/2)),\
+#      np.ones(int(self.HEIGHT*self.WIDTH/2))),0)
+    
     self.simulation.simulate(action)
     observation = self.simulation.observe()[:,a:b,c:d]
     new = self.simulation.render()[a:b,c:d]
     import ray
     new = MultiSSIM([new], [gd],i)[0]
-    if random.random()>.9 and self.top<new:
+    if self.top<new:
+        print(old)
         print(new)
         self.top = new
         if self.top>.973:

@@ -65,7 +65,7 @@ class FCN(TorchModelV2, nn.Module):
                     kernel,
                     stride,
                     padding,
-#                    activation_fn="tanh",
+                    activation_fn="tanh",
                 )
             )
 #            layers.append(nn.Tanh())
@@ -93,6 +93,7 @@ class FCN(TorchModelV2, nn.Module):
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"].type(torch.float32)
       x=x.type(torch.float32)
+      return x,state
       out=self.f(x,state,seq_lens)
       return  out, state
 
