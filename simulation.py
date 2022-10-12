@@ -108,27 +108,25 @@ class PhysicSimulation:
 
 
     def round_retain_sum(self,x):
-     a=time.time()
      N = np.round(np.sum(x)).astype(int)
      y = x.astype(int)
      M=np.sum(y)
      K = N - M 
      z = x-y 
-     idx = np.argsort(z)[-K:]
-     y[idx] +=1     
+     if K!=0:
+       idx = np.argsort(z)[-K:]
+       y[idx] +=1     
      return y
 
 
     def simulate(self, x):
+        x = x - np.min(x)
         x=x.flatten().astype(np.float64)
         x=x*self.sppps*self.WIDTH*self.HEIGHT/L/L/sum(x)
         s=np.array(self.round_retain_sum(x))
-#        s = np.random.choice(range(len(x)),size=int(m),p=x)
-#        s= np.bincount(s)
         if random.random()>.99:
             print(s)
             print(np.sum(s))
-
         idxs = []
         for i in range( min(self.CST,np.max(s))):
           idxs.append(np.where(s>i)[0])
@@ -146,8 +144,6 @@ class PhysicSimulation:
         self.variance[idx,:]=self.variance[idx,:]/indexes
         self.updated=False
 
-        if random.random() > .9 and torch.sum(self.indexes)==2*self.observations.shape[0]:
-            print(torch.var(self.indexes.float()))
 
     def out(self,data):
         return data.view(self.HEIGHT,self.WIDTH,*data.shape[1:]).type(torch.float16)    
@@ -170,7 +166,7 @@ class PhysicSimulation:
         rendersquared = self.observations**2
         temp = torch.cat((
 #self.out(self.observations).mean(-1).unsqueeze(-1),\
-self.out(self.indexes/self.max).unsqueeze(-1), \
+self.out(self.indexes/torch.max(self.indexes)).unsqueeze(-1), \
 #self.out((self.variance - rendersquared)).mean(-1).unsqueeze(-1),self.add, \
 # norm(((self.out(self.observations)-a).mean(-1).unsqueeze(-1)),self.denoising) \
   ),axis=-1).permute(2,0,1)
@@ -266,9 +262,10 @@ class CustomEnv(gym.Env):
         action = action.reshape(-1)
 #    if self.simulation.count==1:
 #        print("on va la")
-#        action=np.ones(int(self.HEIGHT*self.WIDTH/2))
+#        action=np.concatenate((np.ones(int(self.HEIGHT*self.WIDTH/2)),\
+#np.zeros(int(self.HEIGHT*self.WIDTH/2))),0)
 #    else:
-#       action=np.concatenate((np.zeros(int(self.HEIGHT*self.WIDTH/2)),\
+#        action=np.concatenate((np.zeros(int(self.HEIGHT*self.WIDTH/2)),\
 #      np.ones(int(self.HEIGHT*self.WIDTH/2))),0)
     
     self.simulation.simulate(action)
@@ -276,17 +273,15 @@ class CustomEnv(gym.Env):
     new = self.simulation.render()[a:b,c:d]
     import ray
     new = MultiSSIM([new], [gd],i)[0]
-    if self.top<new:
+    if  self.top<new:
         print(old)
+        print(self.top)
         print(new)
         self.top = new
         if self.top>.973:
          self.insight()
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count
-    #print(observation.shape)
-    #print(torch.min(observation))
-    #print(torch.max(observation))
     return observation.numpy(),reward.detach().numpy(),done, {}
 
   def insight(self): 

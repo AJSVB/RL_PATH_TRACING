@@ -44,7 +44,7 @@ def train_ppo_model():
 "entropy_coeff":1e-3,
 "decay":.98,
 "clip_param":.04, 
-#"normalize_actions":False,
+"normalize_actions":False,
 "train_batch_size":32,
 #"num_envs_per_worker":1,
         'num_workers':1,
