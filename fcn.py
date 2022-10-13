@@ -39,10 +39,10 @@ class FCN(TorchModelV2, nn.Module):
     ):
         c=1
         model_config["conv_filters"] = [
-#                                        [64,[c,c], [1,1]],
-#                                        [64,[c,c], [1,1]],
-#                                        [64,[c,c], [1,1]],
-#                                        [64,[c,c], [1,1]],
+      #                                  [64,[c,c], [1,1]],
+      #                                  [64,[c,c], [1,1]],
+      #                                  [64,[c,c], [1,1]],
+                                        [64,[c,c], [1,1]],
                                         [2,[c,c], [1,1]],
                                         [1,[c,c], [1,1]]]
 
@@ -56,6 +56,7 @@ class FCN(TorchModelV2, nn.Module):
         layers = []
         (in_channels,w, h) = obs_space.shape
         in_size = [w, h]
+        activation="relu"
         for out_channels, kernel, stride in filters:
             padding, out_size = same_padding(in_size, kernel, stride)
             layers.append(
@@ -65,14 +66,14 @@ class FCN(TorchModelV2, nn.Module):
                     kernel,
                     stride,
                     padding,
-                    activation_fn="linear",
+                    activation_fn=activation,
                 )
             )
             in_channels = out_channels
             in_size = out_size
-        C=1
-        self._convs = nn.Sequential(*layers[0:1*C])
-        self.head_value = nn.Sequential(*layers[1*C:2*C])
+            activation="linear"
+        self._convs = nn.Sequential(*layers[0:-1])
+        self.head_value = nn.Sequential(*layers[-1:])
     def f(
         self,
         x,
@@ -93,12 +94,12 @@ class FCN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"].type(torch.float32)
+      #with torch.cuda.amp.autocast():
       out =self.f(x,state,seq_lens)
       print(out[:,0].reshape(input_dict["obs"].shape[0], -1))
-      out[:,1] = out[:,0]*0 - 10
+      out[:,1] = out[:,1]*0 - 10
       out = out.reshape(input_dict["obs"].shape[0], -1)
-
-      return  out, state
+      return  out , state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:

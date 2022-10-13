@@ -166,10 +166,10 @@ class PhysicSimulation:
         a=self.render()
         rendersquared = self.observations**2
         temp = torch.cat((
-#self.out(self.observations).mean(-1).unsqueeze(-1),\
+self.out(self.observations).mean(-1).unsqueeze(-1),\
 self.out(self.indexes/torch.max(self.indexes)).unsqueeze(-1), \
-#self.out((self.variance - rendersquared)).mean(-1).unsqueeze(-1),self.add, \
-# norm(((self.out(self.observations)-a).mean(-1).unsqueeze(-1)),self.denoising) \
+self.out((self.variance - rendersquared)).mean(-1).unsqueeze(-1),self.add, \
+ norm(((self.out(self.observations)-a).mean(-1).unsqueeze(-1)),self.denoising) \
   ),axis=-1).permute(2,0,1)
 #        print(temp.dtype)
         return temp.type(torch.float16)
@@ -230,7 +230,7 @@ class CustomEnv(gym.Env):
 
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH/L/L),))
     self.observation_space = spaces.Box(low=-1e-2, high=1, shape=
-                    (1,int(self.HEIGHT/L),int(self.WIDTH/L)), dtype=np.float16) #MACHINE PRECISION
+                    (7,int(self.HEIGHT/L),int(self.WIDTH/L)), dtype=np.float16) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
     self.ground_truth = get_truth("/home/ascardigli/datasets/temple/"+"truth.png",self.HEIGHT,self.WIDTH)
     self.spec = Spec(self.max)
