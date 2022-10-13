@@ -65,7 +65,7 @@ def train_ppo_model():
 }
 })
     # Train for one iteration.
-    for _ in range(10):
+    for _ in range(20):
          algo.train()
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.

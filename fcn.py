@@ -37,7 +37,7 @@ class FCN(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
-        c=1
+        c=3
         model_config["conv_filters"] = [
       #                                  [64,[c,c], [1,1]],
       #                                  [64,[c,c], [1,1]],
@@ -71,9 +71,10 @@ class FCN(TorchModelV2, nn.Module):
                     activation_fn=activation,
                 )
             )
-            in_channels = out_channels
+            in_channels = 64 #out_channels
             in_size = out_size
-        self._convs = nn.Sequential(*layers[0:-1])
+        self._convs = nn.Sequential(*(layers[0:-2]))
+        self.head = nn.Sequential(*layers[-2:-1])
         self.head_value = nn.Sequential(*layers[-1:])
     def f(
         self,
@@ -82,9 +83,12 @@ class FCN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
          x = self._convs(x)
-         tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
-         self.tmp = tmp
-         return x #out,std
+         #mean = x.reshape(*x.shape[:2],-1).var(-1).unsqueeze(-1).unsqueeze(-1)
+
+        # mean = x.reshape(*x.shape[:2],-1).mean(-1).unsqueeze(-1).unsqueeze(-1)
+         #x = x/(torch.sqrt(mean)+1e-5) #.repeat(1,1,*x.shape[2:])
+         self.tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
+         return self.head(x) #out,std
 
 
     @override(TorchModelV2)
@@ -95,9 +99,7 @@ class FCN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"].type(torch.float32)
-      #with torch.cuda.amp.autocast():
       out =self.f(x,state,seq_lens)
-      print(out[:,0].reshape(input_dict["obs"].shape[0], -1))
       out[:,1] = out[:,1]*0 - 10
       out = out.reshape(input_dict["obs"].shape[0], -1)
       return  out , state

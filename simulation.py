@@ -33,14 +33,14 @@ def get_truth(path,HEIGHT=480,WIDTH=640):
     image= Image.open(path)
     x = TF.to_tensor(image)
     x.unsqueeze_(0)
-    return x[:,:,-HEIGHT:,-WIDTH:].type(torch.float16) #.mean(1).unsqueeze(1)
+    return x[:,:,-HEIGHT:,-WIDTH:]#.type(torch.float16) #.mean(1).unsqueeze(1)
 
 
 def get_ith_image(path,i,frame_number = 1,HEIGHT=480,WIDTH=640):
     image = Image.open(path+str(frame_number).zfill(4) + "-" + str(i).zfill(5)+'.png0001.png')
     x = TF.to_tensor(image)
     x.unsqueeze_(0)
-    return x[:,:,-HEIGHT:,-WIDTH:].type(torch.float16) #.mean(1).unsqueeze(1)
+    return x[:,:,-HEIGHT:,-WIDTH:]#.type(torch.float16) #.mean(1).unsqueeze(1)
 
 def aggregate_by_pixel(path,number_images,frame_number = 1,HEIGHT=480,WIDTH=640):
     dataset = torch.cat([get_ith_image(path,i,frame_number,HEIGHT,WIDTH) for i in range(number_images)],0)
@@ -56,7 +56,7 @@ def get_add(path,detail):
     x = TF.to_tensor(image)
     if x[0,:].equal(x[1,:]):
         x = x[0:1,:]
-    return x.type(torch.float16).mean(0).unsqueeze(0)
+    return x.mean(0).unsqueeze(0)#.type(torch.float16)
 
 def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
     dataset = torch.cat([get_add(path,a) for a in  ["Normal","DiffCol","Mist"]])
@@ -120,12 +120,12 @@ class PhysicSimulation:
 
 
     def simulate(self, x):
-        print(x)
         x = x - np.min(x)
         x=x.flatten().astype(np.float64)
         x=x*self.sppps*self.WIDTH*self.HEIGHT/L/L/sum(x)
         s=np.array(self.round_retain_sum(x))
         if random.random()>.99:
+            print(x)
             print(s)
             print(np.sum(s))
         idxs = []
@@ -147,7 +147,7 @@ class PhysicSimulation:
 
 
     def out(self,data):
-        return data.view(self.HEIGHT,self.WIDTH,*data.shape[1:]).type(torch.float16)    
+        return data.view(self.HEIGHT,self.WIDTH,*data.shape[1:])#.type(torch.float16)    
 
     def render(self):        
       if self.denoising:
@@ -172,7 +172,7 @@ self.out((self.variance - rendersquared)).mean(-1).unsqueeze(-1),self.add, \
  norm(((self.out(self.observations)-a).mean(-1).unsqueeze(-1)),self.denoising) \
   ),axis=-1).permute(2,0,1)
 #        print(temp.dtype)
-        return temp.type(torch.float16)
+        return temp#.type(torch.float16)
 
 
 class Spec:
@@ -230,7 +230,7 @@ class CustomEnv(gym.Env):
 
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH/L/L),))
     self.observation_space = spaces.Box(low=-1e-2, high=1, shape=
-                    (7,int(self.HEIGHT/L),int(self.WIDTH/L)), dtype=np.float16) #MACHINE PRECISION
+                    (7,int(self.HEIGHT/L),int(self.WIDTH/L)), dtype=np.float32) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
     self.ground_truth = get_truth("/home/ascardigli/datasets/temple/"+"truth.png",self.HEIGHT,self.WIDTH)
     self.spec = Spec(self.max)
@@ -279,7 +279,7 @@ class CustomEnv(gym.Env):
         print(self.top)
         print(new)
         self.top = new
-        if self.top>.85:
+        if self.top>.87:
          self.insight()
     reward = - old + new
     done = self.spec.max_episode_steps <= self.simulation.count
@@ -288,7 +288,7 @@ class CustomEnv(gym.Env):
   def insight(self): 
     img= self.simulation.indexes.unsqueeze(-1)
     norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
-    te=str(random.random())
+    te=str(self.top)
     save(self.simulation.out(norm),"/home/ascardigli/RL_PATH_TRACING/tmp/"+te+".png")
 
 
