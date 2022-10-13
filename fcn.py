@@ -37,11 +37,11 @@ class FCN(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
-        c=1
+        c=3
         model_config["conv_filters"] = [
       #                                  [64,[c,c], [1,1]],
       #                                  [64,[c,c], [1,1]],
-                                        [64,[c,c], [1,1]],
+#                                        [64,[c,c], [1,1]],
                                         [64,[c,c], [1,1]],
                                         [2,[c,c], [1,1]],
                                         [1,[c,c], [1,1]]]
@@ -100,7 +100,7 @@ class FCN(TorchModelV2, nn.Module):
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"].type(torch.float32)
       out =self.f(x,state,seq_lens)
-      out[:,1] = -nn.ReLU()(out[:,1])
+      out[:,1] = out[:,1] *0 -10   #-nn.ReLU()(out[:,1])
       out = out.reshape(input_dict["obs"].shape[0], -1)
       return  out , state
 
