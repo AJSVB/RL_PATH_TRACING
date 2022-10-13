@@ -46,7 +46,7 @@ def train_ppo_model():
 "decay":.98,
 "clip_param":.04, 
 "normalize_actions":False,
-"train_batch_size":16,
+"train_batch_size":8,
 #"num_envs_per_worker":1,
         'num_workers':4,
 
