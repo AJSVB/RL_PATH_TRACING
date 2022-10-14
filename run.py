@@ -51,10 +51,10 @@ def train_ppo_model():
   "entropy_coeff": 0.1,   "epsilon": 0.21244584717938497,
   "grad_clip": 4000.0,   "kl_coeff": 0.09175633009791462,
   "kl_target": 0.4022912297489361,   "lambda": 0.07157041286837718,
-  "lr": 1e-02,  "momentum": 0.7,
+  "lr": 1e-1,  "momentum": 0.7,
   "use_critic": False,  "use_gae": True,
   "use_kl_loss": True,  "vf_loss_coeff": 0.3323018458897308,
-
+   "optimizer":"adabelief",
 
 
 
