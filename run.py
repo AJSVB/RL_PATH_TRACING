@@ -47,37 +47,36 @@ def train_ppo_model():
 #"kl_target":1,"epsilon":0.01,"entropy_coeff":1e-3,"decay":.98,"clip_param":.04, 
 
 
-  "clip_param": 0.9726497874484089,   "decay": 0.998762455743966,
-  "entropy_coeff": 0.1,   "epsilon": 0.21244584717938497,
-  "grad_clip": 4000.0,   "kl_coeff": 0.09175633009791462,
-  "kl_target": 0.4022912297489361,   "lambda": 0.07157041286837718,
-  "lr": 1e-1,  "momentum": 0.7,
-  "use_critic": False,  "use_gae": True,
-  "use_kl_loss": True,  "vf_loss_coeff": 0.3323018458897308,
-   "optimizer":"adabelief",
+#  "clip_param": 0.9726497874484089,   
+"decay": 0.97,
+#, "entropy_coeff": 1e-7,
+#   "epsilon": 0.21244584717938497,   "grad_clip": 4000.0,   "kl_coeff": 0.49175633009791462,
+#  "kl_target": 0.4022912297489361,   "lambda": 0.07157041286837718,   "lr": 1e-2,  "momentum": 0.9,
+  "use_critic": False,  "use_gae": True,   "use_kl_loss": True,  
+#   "vf_loss_coeff": 0.3323018458897308,
+   "optimizer":"adabelief", 
 
 
 
 #            "use_critic":tune.choice([True,False]),
 #            "use_gae":tune.choice([True,False]),
 #            "use_kl_loss":tune.choice([True,False]),
-#            "kl_coeff":tune.uniform(0.,1.),
-#            "kl_target":tune.uniform(0.,.5),
-#            "lambda": tune.uniform(0., 1.0),
-#            "clip_param": tune.uniform(0.001, 0.99),
-#            "lr": tune.choice([1e-1,1e-2,1e-3, 5e-4, 1e-4, 5e-5, 1e-5,1e-6,1e-8]),
-#            "grad_clip": tune.choice([.04,.4,4,40,400,4000]),
-#          "decay": tune.uniform(.95,1),
-#          "momentum": tune.choice([0,.1,.3,.5,.7,.9,.99]),
-#          "epsilon": tune.uniform(0.,1.),
-#          "vf_loss_coeff": tune.uniform(0,1),
-#          "entropy_coeff": tune.choice([1e-6,1e-7,1e-8,1e-9,1e-5,1e-4,1e-3,1e-2,1e-1]),
+            "kl_coeff": 5e-3,
+            "kl_target": 5e-4,
+            "lambda": .2,
+            "clip_param": .15,
+            "lr": 1e-5 ,
+            "grad_clip": 4,
+          "momentum": .9 ,
+          "epsilon": .5,
+          "vf_loss_coeff": .5,
+          "entropy_coeff": 1e-5 ,
 
 
 
         "vtrace_drop_last_ts" : False,
 
-"gamma":1,
+"gamma":0,
 "normalize_actions":False,
 "train_batch_size":8,
 #"num_envs_per_worker":1,
@@ -99,7 +98,7 @@ def train_ppo_model():
 })
     # Train for one iteration.
     for _ in range(30):
-         algo.train()
+         a = algo.train()['episode_reward_max']
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.
    # algo.save("/tmp/rllib_checkpoint")

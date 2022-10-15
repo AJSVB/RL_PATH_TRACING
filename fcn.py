@@ -37,11 +37,11 @@ class FCN(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
-        c=3
+        c=2
         model_config["conv_filters"] = [
       #                                  [64,[c,c], [1,1]],
       #                                  [64,[c,c], [1,1]],
-#                                        [64,[c,c], [1,1]],
+                                        [64,[c,c], [1,1]],
                                         [64,[c,c], [1,1]],
                                         [2,[c,c], [1,1]],
                                         [1,[c,c], [1,1]]]
@@ -61,6 +61,11 @@ class FCN(TorchModelV2, nn.Module):
             padding, out_size = same_padding(in_size, kernel, stride)
             if out_channels!=64:
               activation="linear"
+
+
+            if out_channels!=64:
+                in_channels = 64 #out_channels
+
             layers.append(
                 SlimConv2d(
                     in_channels,
@@ -71,9 +76,9 @@ class FCN(TorchModelV2, nn.Module):
                     activation_fn=activation,
                 )
             )
-            in_channels = 64 #out_channels
             in_size = out_size
-        self._convs = nn.Sequential(*(layers[0:-2]))
+        self._convs1 = nn.Sequential(*(layers[0:1]))
+        self._convs2 = nn.Sequential(*(layers[1:2]))
         self.head = nn.Sequential(*layers[-2:-1])
         self.head_value = nn.Sequential(*layers[-1:])
     def f(
@@ -82,13 +87,12 @@ class FCN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-         x = self._convs(x)
+         x1 = self._convs1(x)
          #mean = x.reshape(*x.shape[:2],-1).var(-1).unsqueeze(-1).unsqueeze(-1)
-
         # mean = x.reshape(*x.shape[:2],-1).mean(-1).unsqueeze(-1).unsqueeze(-1)
          #x = x/(torch.sqrt(mean)+1e-5) #.repeat(1,1,*x.shape[2:])
-         self.tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
-         return self.head(x) #out,std
+         self.tmp = self.head_value(x1).reshape(*x.shape[:1],-1).mean(1)
+         return self.head(x1) #out,std
 
 
     @override(TorchModelV2)
@@ -100,7 +104,7 @@ class FCN(TorchModelV2, nn.Module):
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"].type(torch.float32)
       out =self.f(x,state,seq_lens)
-      out[:,1] = out[:,1] *0 -10   #-nn.ReLU()(out[:,1])
+      out[:,1] = out[:,1]*0 -10 # -nn.ReLU()(out[:,1])
       out = out.reshape(input_dict["obs"].shape[0], -1)
       return  out , state
 
