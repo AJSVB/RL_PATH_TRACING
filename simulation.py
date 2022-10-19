@@ -56,7 +56,7 @@ def get_add(path,detail):
     x = TF.to_tensor(image)
     if x[0,:].equal(x[1,:]):
         x = x[0:1,:]
-    return x.mean(0).unsqueeze(0)#.type(torch.float16)
+    return x #.mean(0).unsqueeze(0)#.type(torch.float16)
 
 def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
     dataset = torch.cat([get_add(path,a) for a in  ["Normal","DiffCol","Mist"]])
@@ -91,11 +91,11 @@ class PhysicSimulation:
         self.denoising=denoising
     def reset(self):
         self.permutation = torch.randperm(self.max)
-        self.observations = self.dataset[:,:,self.permutation[0]] #self.albedo #torch.zeros(self.dataset.shape[:2])
+        self.observations = self.dataset[:,:,self.permutation[0]] #self.albedo
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int) 
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
-        self.count = 1 #
+        self.count = 1
         self.updated=False
     
     def sample(self,idx):
@@ -218,8 +218,8 @@ class CustomEnv(gym.Env):
     self.HEIGHT = 720 
     self.WIDTH =   1280
     self.partition = env_config["partition"]
-    self.CST= 10
-    self.max = int((self.spp-1)/self.sppps)  *self.CST +1 #
+    self.CST= 4
+    self.max = int((self.spp)/self.sppps)  *self.CST  +1 #
     self.id = env_config.vector_index
     self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
 
@@ -230,7 +230,7 @@ class CustomEnv(gym.Env):
 
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH/L/L),))
     self.observation_space = spaces.Box(low=-1e-2, high=1, shape=
-                    (7,int(self.HEIGHT/L),int(self.WIDTH/L)), dtype=np.float32) #MACHINE PRECISION
+                    (int(self.HEIGHT/L),int(self.WIDTH/L),11), dtype=np.float32) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
     self.ground_truth = get_truth("/home/ascardigli/datasets/temple/"+"truth.png",self.HEIGHT,self.WIDTH)
     self.spec = Spec(self.max)
@@ -275,15 +275,13 @@ class CustomEnv(gym.Env):
     import ray
     new = MultiSSIM([new], [gd],i)[0]
     if  self.top<new:
-        print(old)
-        print(self.top)
         print(new)
         self.top = new
         if self.top>.87:
          self.insight()
-    reward = - old + new
+    reward = 2**(2**new) 
     done = self.spec.max_episode_steps <= self.simulation.count
-    return observation.numpy(),reward.detach().numpy(),done, {}
+    return observation.numpy().transpose(1,2,0),reward.detach().numpy(),done, {}
 
   def insight(self): 
     img= self.simulation.indexes.unsqueeze(-1)
@@ -306,12 +304,11 @@ class CustomEnv(gym.Env):
     
   def reset(self):
     self.counter+=4
-    self.simulation.count=1
     if self.counter==4:
         self.counter=0
         self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
     a,b,c,d=self.crop()
-    return self.simulation.observe().numpy()[:,a:b,c:d]
+    return self.simulation.observe().numpy()[:,a:b,c:d].transpose(1,2,0)
     
   def render(self, mode='human', close=False):
     return self.simulation.render()

@@ -36,25 +36,25 @@ def train_ppo_model():
     a = time.time()
     algo = appo.APPO(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':2, "sppps":.5,"denoising":False,"prob_sampling":True,"partition":[1]
+'frame_number':1, 'spp':4, "sppps":.5,"denoising":False,"prob_sampling":True,"partition":[1]
             },
           'framework' :"torch",
 "num_gpus":4,
 
-
+"vtrace_drop_last_ts":False,
 
 #"vf_loss_coeff":.05,"momentum":.9,"lr":.1,"lambda":.8,"kl_coeff":1,"grad_clip":.400,"gamma":1,
 #"kl_target":1,"epsilon":0.01,"entropy_coeff":1e-3,"decay":.98,"clip_param":.04, 
 
 
 #  "clip_param": 0.9726497874484089,   
-"decay": 0.97,
+#"decay": 0.97,
 #, "entropy_coeff": 1e-7,
 #   "epsilon": 0.21244584717938497,   "grad_clip": 4000.0,   "kl_coeff": 0.49175633009791462,
 #  "kl_target": 0.4022912297489361,   "lambda": 0.07157041286837718,   "lr": 1e-2,  "momentum": 0.9,
-  "use_critic": False,  "use_gae": True,   "use_kl_loss": True,  
+ # "use_critic": False,  "use_gae": True,   "use_kl_loss": True,  
 #   "vf_loss_coeff": 0.3323018458897308,
-   "optimizer":"adabelief", 
+   "optimizer": "adabelief", 
 
 
 
@@ -65,39 +65,40 @@ def train_ppo_model():
             "kl_target": 5e-4,
             "lambda": .2,
             "clip_param": .15,
-            "lr": 1e-5 ,
+            "lr": tune.choice([1e-5,3e-5,1e-6,3e-6]) ,
             "grad_clip": 4,
-          "momentum": .9 ,
-          "epsilon": .5,
+          #"momentum": tune.uniform(.5,1) ,
+          #"epsilon": .3,
           "vf_loss_coeff": .5,
           "entropy_coeff": 1e-5 ,
 
+#"sgd_minibatch_size":16,
 
-
-        "vtrace_drop_last_ts" : False,
 
 "gamma":0,
 "normalize_actions":False,
-"train_batch_size":8,
+"train_batch_size":8, #Was 128
 #"num_envs_per_worker":1,
         'num_workers':8,
-
 #"",
 #"evaluation_num_workers":1,
 'num_cpus_per_worker':6,
 'num_gpus_per_worker':.5,
 "evaluation_interval":10,
 "rollout_fragment_length":2, #was20
-#"replay_buffer_num_slots":30,
   "model":{
    "custom_model":"FCN",
+"conv_filters":[[2, [1, 1], 1], [1, [1, 1], 1]],
 "fcnet_hiddens":[],
+"post_fcnet_hiddens":[],
+"post_fcnet_activation":"linear",
+"vf_share_layers":False,
 "no_final_linear":True,
 
 }
 })
     # Train for one iteration.
-    for _ in range(30):
+    for _ in range(100):
          a = algo.train()['episode_reward_max']
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.
