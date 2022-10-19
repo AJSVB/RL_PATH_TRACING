@@ -124,7 +124,7 @@ class PhysicSimulation:
         x=x.flatten().astype(np.float64)
         x=x*self.sppps*self.WIDTH*self.HEIGHT/L/L/sum(x)
         s=np.array(self.round_retain_sum(x))
-        if random.random()>.99:
+        if random.random()>1.99:
             print(x)
             print(s)
             print(np.sum(s))
@@ -274,7 +274,7 @@ class CustomEnv(gym.Env):
     new = self.simulation.render()[a:b,c:d]
     import ray
     new = MultiSSIM([new], [gd],i)[0]
-    if  self.top<new:
+    if  self.top<new and random.random()>.9:
         print(new)
         self.top = new
         if self.top>.87:

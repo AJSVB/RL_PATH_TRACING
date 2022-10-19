@@ -328,12 +328,12 @@ class FCN1(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
-        c=1
+        c= model_config["c"]
         model_config["conv_filters"] = [
-                                        [64,[c,c], [1,1]],
-                                        [64,[c,c], [1,1]],
-                                        [64,[c,c], [1,1]],
-                                        [64,[c,c], [1,1]],
+                                        [32,[c,c], [1,1]],
+                                        [32,[c,c], [1,1]],
+                                        [32,[c,c], [1,1]],
+                                        [32,[c,c], [1,1]],
                                         [2,[c,c], [1,1]],
                                         [1,[c,c], [1,1]]]
 
@@ -348,14 +348,17 @@ class FCN1(TorchModelV2, nn.Module):
         (w, h,in_channels) = obs_space.shape
         in_size = [w, h]
         activation="relu"
-        for out_channels, kernel, stride in filters:
+        for e, f in enumerate(filters):
+            out_channels, kernel, stride = f
             padding, out_size = same_padding(in_size, kernel, stride)
             if out_channels!=64:
               activation="linear"
 
 
-            if out_channels!=64:
-                in_channels = 64 #out_channels
+            if e!=0:
+                in_channels = 32 #out_channels
+            if e==2:
+                in_channels=obs_space.shape[2]
 
             layers.append(
                 SlimConv2d(
@@ -368,8 +371,8 @@ class FCN1(TorchModelV2, nn.Module):
                 )
             )
             in_size = out_size
-        self._convs1 = nn.Sequential(*(layers[0:1]))
-        self._convs2 = nn.Sequential(*(layers[1:2]))
+        self._convs1 = nn.Sequential(*(layers[0:2]))
+        self._convs2 = nn.Sequential(*(layers[2:4]))
         self.head = nn.Sequential(*layers[-2:-1])
         self.head_value = nn.Sequential(*layers[-1:])
     def f(
@@ -407,4 +410,4 @@ class FCN1(TorchModelV2, nn.Module):
 
     
 from ray.rllib.models import ModelCatalog
-ModelCatalog.register_custom_model("FCN", FCN1)
+ModelCatalog.register_custom_model("FCN", FCN)

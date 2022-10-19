@@ -32,11 +32,11 @@ def generate_partition():
     return np.sort(l)[::-1]
 
 
-def train_ppo_model():
+def train_ppo_model(spp=4,c=1,sppps=.5):
     a = time.time()
     algo = appo.APPO(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':4, "sppps":.5,"denoising":False,"prob_sampling":True,"partition":[1]
+'frame_number':1, 'spp':spp, "sppps":sppps,"denoising":False,"prob_sampling":True,"partition":[1]
             },
           'framework' :"torch",
 "num_gpus":4,
@@ -79,33 +79,37 @@ def train_ppo_model():
 "normalize_actions":False,
 "train_batch_size":8, #Was 128
 #"num_envs_per_worker":1,
-        'num_workers':8,
+        'num_workers':4,
 #"",
 #"evaluation_num_workers":1,
 'num_cpus_per_worker':6,
 'num_gpus_per_worker':.5,
-"evaluation_interval":10,
+#"evaluation_interval":10,
 "rollout_fragment_length":2, #was20
   "model":{
    "custom_model":"FCN",
-"conv_filters":[[2, [1, 1], 1], [1, [1, 1], 1]],
+"conv_filters":[[32,[1,1],1],[32,[1,1],1],[2, [1, 1], 1], [1, [1, 1], 1]],
 "fcnet_hiddens":[],
 "post_fcnet_hiddens":[],
 "post_fcnet_activation":"linear",
-"vf_share_layers":False,
+"vf_share_layers":True,
 "no_final_linear":True,
-
 }
 })
     # Train for one iteration.
-    for _ in range(100):
+    for _ in range(20):
          a = algo.train()['episode_reward_max']
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.
    # algo.save("/tmp/rllib_checkpoint")
    # return "/tmp/rllib_checkpoint/checkpoint_000001/checkpoint-1"
-
+    print(spp)
+    print(c)
+    print(sppps)
+    print(a)
 
 #simulation.ground_truth("../datasets/temple/",name="truth.png")
 if __name__ == "__main__":
-    train_ppo_model()
+#    for spp in [2,4,8]:
+#        for c in [1,3,5,7,9,11]:
+            train_ppo_model()
