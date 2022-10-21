@@ -328,12 +328,12 @@ class FCN1(TorchModelV2, nn.Module):
         model_config: ModelConfigDict,
         name: str,
     ):
-        c= model_config["c"]
+        c= 11
         model_config["conv_filters"] = [
-                                        [32,[c,c], [1,1]],
-                                        [32,[c,c], [1,1]],
-                                        [32,[c,c], [1,1]],
-                                        [32,[c,c], [1,1]],
+#                                        [32,[c,c], [1,1]],
+#                                        [32,[c,c], [1,1]],
+#                                        [32,[c,c], [1,1]],
+#                                        [32,[c,c], [1,1]],
                                         [2,[c,c], [1,1]],
                                         [1,[c,c], [1,1]]]
 
@@ -351,7 +351,7 @@ class FCN1(TorchModelV2, nn.Module):
         for e, f in enumerate(filters):
             out_channels, kernel, stride = f
             padding, out_size = same_padding(in_size, kernel, stride)
-            if out_channels!=64:
+            if out_channels!=32:
               activation="linear"
 
 
@@ -371,8 +371,8 @@ class FCN1(TorchModelV2, nn.Module):
                 )
             )
             in_size = out_size
-        self._convs1 = nn.Sequential(*(layers[0:2]))
-        self._convs2 = nn.Sequential(*(layers[2:4]))
+        self._convs1 = nn.Sequential(*(layers[0:-2]))
+        #self._convs2 = nn.Sequential(*(layers[2:4]))
         self.head = nn.Sequential(*layers[-2:-1])
         self.head_value = nn.Sequential(*layers[-1:])
     def f(
@@ -398,6 +398,7 @@ class FCN1(TorchModelV2, nn.Module):
     ) -> (TensorType, List[TensorType]):
       x=input_dict["obs"].type(torch.float32).permute(0,3,1,2)
       out =self.f(x,state,seq_lens)
+      out[:,0] =  10 -nn.ReLU()(out[:,1])
       out[:,1] =   -nn.ReLU()(out[:,1])
       out = out.reshape(input_dict["obs"].shape[0], -1)
       return  out , state

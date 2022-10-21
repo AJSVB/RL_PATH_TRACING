@@ -89,13 +89,15 @@ class PhysicSimulation:
         self.reset()
         self.updated=False
         self.denoising=denoising
+        self.a=torch.Tensor(range(1280)).unsqueeze(0).repeat(720,1).unsqueeze(-1)/1280.
+        self.b=torch.Tensor(range(720)).unsqueeze(1).repeat(1,1280).unsqueeze(-1)/720.
     def reset(self):
         self.permutation = torch.randperm(self.max)
-        self.observations = self.dataset[:,:,self.permutation[0]] #self.albedo
-        self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.int) 
+        self.observations = self.albedo # self.dataset[:,:,self.permutation[0]] 
+        self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.float32)*1e-8 # 
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
-        self.count = 1
+        self.count = 0 #
         self.updated=False
     
     def sample(self,idx):
@@ -124,7 +126,7 @@ class PhysicSimulation:
         x=x.flatten().astype(np.float64)
         x=x*self.sppps*self.WIDTH*self.HEIGHT/L/L/sum(x)
         s=np.array(self.round_retain_sum(x))
-        if random.random()>1.99:
+        if random.random()>.99:
             print(x)
             print(s)
             print(np.sum(s))
@@ -166,11 +168,12 @@ class PhysicSimulation:
         a=self.render()
         rendersquared = self.observations**2
         temp = torch.cat((
-self.out(self.observations).mean(-1).unsqueeze(-1),\
+self.out(self.observations),\
 self.out(self.indexes/torch.max(self.indexes)).unsqueeze(-1), \
-self.out((self.variance - rendersquared)).mean(-1).unsqueeze(-1),self.add, \
- norm(((self.out(self.observations)-a).mean(-1).unsqueeze(-1)),self.denoising) \
-  ),axis=-1).permute(2,0,1)
+self.out((self.variance - rendersquared)),self.add, \
+ norm((self.out(self.observations)-a),self.denoising), \
+  self.a,self.b \
+ ),axis=-1).permute(2,0,1)
 #        print(temp.dtype)
         return temp#.type(torch.float16)
 
@@ -218,8 +221,8 @@ class CustomEnv(gym.Env):
     self.HEIGHT = 720 
     self.WIDTH =   1280
     self.partition = env_config["partition"]
-    self.CST= 4
-    self.max = int((self.spp)/self.sppps)  *self.CST  +1 #
+    self.CST= 10
+    self.max = int((self.spp)/self.sppps)  *self.CST  # #
     self.id = env_config.vector_index
     self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
 
@@ -230,7 +233,7 @@ class CustomEnv(gym.Env):
 
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH/L/L),))
     self.observation_space = spaces.Box(low=-1e-2, high=1, shape=
-                    (int(self.HEIGHT/L),int(self.WIDTH/L),11), dtype=np.float32) #MACHINE PRECISION
+                    (int(self.HEIGHT/L),int(self.WIDTH/L),19), dtype=np.float32) #MACHINE PRECISION
     denoising.initialise("/home/ascardigli/datasets/temple/")
     self.ground_truth = get_truth("/home/ascardigli/datasets/temple/"+"truth.png",self.HEIGHT,self.WIDTH)
     self.spec = Spec(self.max)
@@ -274,19 +277,19 @@ class CustomEnv(gym.Env):
     new = self.simulation.render()[a:b,c:d]
     import ray
     new = MultiSSIM([new], [gd],i)[0]
-    if  self.top<new and random.random()>.9:
+    if  self.top<new:
         print(new)
         self.top = new
-        if self.top>.87:
+        if self.top>.9805:
          self.insight()
-    reward = 2**(2**new) 
+    reward = 400*(new-.95)**2
     done = self.spec.max_episode_steps <= self.simulation.count
     return observation.numpy().transpose(1,2,0),reward.detach().numpy(),done, {}
 
   def insight(self): 
     img= self.simulation.indexes.unsqueeze(-1)
     norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
-    te=str(self.top)
+    te=str(self.top.item())
     save(self.simulation.out(norm),"/home/ascardigli/RL_PATH_TRACING/tmp/"+te+".png")
 
 

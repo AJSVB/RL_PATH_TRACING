@@ -33,10 +33,13 @@ def generate_partition():
 
 
 def train_ppo_model(spp=4,c=1,sppps=.5):
+    spp=int(spp)
+    c = int(c)
+    sppps = float(sppps)
     a = time.time()
     algo = appo.APPO(env=simulation.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':spp, "sppps":sppps,"denoising":False,"prob_sampling":True,"partition":[1]
+'frame_number':1, 'spp':spp, "sppps":sppps,"denoising":True,"prob_sampling":True,"partition":[1]
             },
           'framework' :"torch",
 "num_gpus":4,
@@ -75,11 +78,11 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 #"sgd_minibatch_size":16,
 
 
-"gamma":0,
+#"gamma":0,
 "normalize_actions":False,
-"train_batch_size":8, #Was 128
+"train_batch_size":4, #Was 128
 #"num_envs_per_worker":1,
-        'num_workers':4,
+        'num_workers':8,
 #"",
 #"evaluation_num_workers":1,
 'num_cpus_per_worker':6,
@@ -88,16 +91,16 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 "rollout_fragment_length":2, #was20
   "model":{
    "custom_model":"FCN",
-"conv_filters":[[32,[1,1],1],[32,[1,1],1],[2, [1, 1], 1], [1, [1, 1], 1]],
+"conv_filters":[[16, [c, c], 1],[16, [c, c], 1],[2, [c, c], 1], [1, [c, c], 1]],
 "fcnet_hiddens":[],
 "post_fcnet_hiddens":[],
 "post_fcnet_activation":"linear",
-"vf_share_layers":True,
+"vf_share_layers":False,
 "no_final_linear":True,
 }
 })
     # Train for one iteration.
-    for _ in range(20):
+    for _ in range(1000):
          a = algo.train()['episode_reward_max']
     print(time.time()-a)
     # Save state of the trained Algorithm in a checkpoint.
@@ -110,6 +113,8 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 
 #simulation.ground_truth("../datasets/temple/",name="truth.png")
 if __name__ == "__main__":
-#    for spp in [2,4,8]:
-#        for c in [1,3,5,7,9,11]:
-            train_ppo_model()
+ import sys
+ te = sys.argv[-3:]
+ spp,c,sppps =  te
+ print(te)
+ train_ppo_model(spp,c,sppps)
