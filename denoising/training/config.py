@@ -114,7 +114,7 @@ def parse_args(cmd=None, description=None):
   if cmd in {'train', 'find_lr'}:
     parser.add_argument('--batch_size', '--bs', '-b', type=int, default=16,
                         help='mini-batch size (total batch size of all devices)')
-    parser.add_argument('--num_loaders', '--loaders', '-j', type=int, default=4,
+    parser.add_argument('--num_loaders', '--loaders', '-j', type=int, default=16,
                         help='number of data loader threads per device')
     parser.add_argument('--precision', '-p', type=str, choices=['fp32', 'mixed'],
                         help='training precision')

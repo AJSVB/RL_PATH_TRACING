@@ -50,24 +50,31 @@ from PIL import Image
 import torchvision.transforms.functional as TF
 def get_ith_image(path,i,frame_number):
     image = Image.open(path+str(i).zfill(2) + "-" + str(frame_number).zfill(4)+'.png')
-    x = TF.to_tensor(image)
-    x.unsqueeze_(0)
-    return x
+    #x = TF.to_tensor(image)
+    #x.unsqueeze_(0)
+    return np.expand_dims(image,0)
 
 def get_truth(path,frame_number):
     image= Image.open(path + "gd"+str(frame_number).zfill(4)+".png")
-    x = TF.to_tensor(image)
-    return x
+    #x = TF.to_tensor(image)
+    return np.array(image)
+
+
+def get_add(a,b,c):
+    if b=="UVUV":
+      b="00UVUV"
+    image= Image.open(a+b+c)
+   # x = TF.to_tensor(image)
+    return np.expand_dims(image,-1)
 
 
 def get_aux(path,frame_number):
-    import minexr
-    f=path + "add"+str(frame_number).zfill(4)+".exr"
-    with open(f, 'rb') as fp:
-        reader = minexr.load(fp)
-        print(reader.shape)
-    x = TF.to_tensor(image)
-    return x
+    f=path + "add"
+    end = str(frame_number).zfill(4)+".png"
+    imgs = np.concatenate([get_add(f,2*g,end) for g   in \
+ ["Image","Alpha","Depth","Mist","Position","Normal","Vector","IndexOB","IndexMA",\
+    "DiffCol","Denoising Normal","Denoising Albedo","Denoising Depth","UV"]],-1)
+    return imgs
 
 
 
@@ -84,15 +91,14 @@ class TrainingDataset(PreprocessedDataset):
     # Get the input and target images
     input_name = "-"+str(index).zfill(4)+".png"
     target_name = "gd"+str(index).zfill(4)+".png"
-    idxs = torch.normal(mean=4*torch.ones(3,720,1280))
-    idxs = torch.round(idxs).to(int)
+    idxs = np.random.normal(loc=4*np.ones((720,1280,3)))
+    idxs = np.round(idxs).astype(int)
     idxs[idxs<0]=0
     idxs[idxs>15] = 15
-    sampling = torch.round(torch.rand((8,3,720,1280))*idxs).to(int)
-    samples = torch.cat([get_ith_image(self.path,i,index) for i in range(16)],0)
-    samples = torch.take_along_dim(samples,sampling,0)
-    print(samples.shape)
-    input_image = samples.permute(2,3,1,0)
+    sampling = np.round(np.random.rand(8,720,1280,3)*idxs).astype(int)
+    samples = np.concatenate([get_ith_image(self.path,i,index) for i in range(16)],0)
+    samples = np.take_along_axis(samples,sampling,0)
+    input_image = np.transpose(samples,(1,2,3,0))
     height = input_image.shape[0]
     width  = input_image.shape[1]
 
@@ -105,32 +111,14 @@ class TrainingDataset(PreprocessedDataset):
     oy = randint(height - sy + 1)
     ox = randint(width  - sx + 1)
 
-
-    gd = get_truth(self.path,index).permute(1,2,0)
-
+    target_image = get_truth(self.path,index)
     aux = get_aux(self.path,index)
-
-
-
-
+    input_image=np.concatenate([input_image,aux],-1)
     color_order = randperm(3)
     input_image=input_image[:,:,color_order,:]
 
-
-
-
-    # Crop the input and target images
-    if self.clean_aux:
-      # Get the auxiliary features from the target image
-      aux_channel_indices = input_channel_indices[self.num_main_channels:]
-      input_image  = input_image [oy:oy+sy, ox:ox+sx, target_channel_indices]
-      aux_image    = target_image[oy:oy+sy, ox:ox+sx, aux_channel_indices]
-      target_image = target_image[oy:oy+sy, ox:ox+sx, target_channel_indices]
-      input_image  = np.concatenate((input_image, aux_image), axis=2)
-    else:
-      # Get the auxiliary features from the input image
-      input_image  = input_image [oy:oy+sy, ox:ox+sx, input_channel_indices]
-      target_image = target_image[oy:oy+sy, ox:ox+sx, target_channel_indices]
+    input_image  = input_image [oy:oy+sy, ox:ox+sx]
+    target_image = target_image[oy:oy+sy, ox:ox+sx]
 
     # Randomly transform the tiles to improve training quality
     if rand() < 0.5:
@@ -149,6 +137,8 @@ class TrainingDataset(PreprocessedDataset):
       target_image = np.swapaxes(target_image, 0, 1)
       sy, sx = sx, sy
 
+    input_image=input_image.reshape(*input_image.shape[:2],-1)
+
     # Zero pad the tiles (always makes a copy)
     pad_size = ((0, self.tile_size - sy), (0, self.tile_size - sx), (0, 0))
     input_image  = np.pad(input_image,  pad_size, mode='constant')
@@ -156,8 +146,8 @@ class TrainingDataset(PreprocessedDataset):
 
     # Randomly zero the main feature channels if there are auxiliary features
     # This prevents "ghosting" artifacts when the main feature is entirely black
-    if self.aux_features and rand() < 0.01:
-      input_image[:, :, 0:self.num_main_channels] = 0
+    if rand() < 0.01:
+      input_image[:, :, :24] = 0
       target_image[:] = 0
 
     # DEBUG: Save the tile
@@ -186,27 +176,22 @@ class ValidationDataset(PreprocessedDataset):
     sample_index, oy, ox, input_channel_indices = self.tiles[index]
     sy = sx = self.tile_size
 
-    # Get the input and target images
-    input_name, target_name = self.samples[sample_index]
-    input_image,  _ = self.images[input_name]
-    target_image, _ = self.images[target_name]
+    input_name = "-"+str(index).zfill(4)+".png"
+    target_name = "gd"+str(index).zfill(4)+".png"
+    idxs = np.random.normal(loc=4*np.ones((720,1280,3)))
+    idxs = np.round(idxs).astype(int)
+    idxs[idxs<0]=0
+    idxs[idxs>15] = 15
+    sampling = np.round(np.random.rand(8,720,1280,3)*idxs).astype(int)
+    samples = np.concatenate([get_ith_image(self.path,i,index) for i in range(16)],0)
+    samples = np.take_along_axis(samples,sampling,0)
+    input_image = np.transpose(samples,(1,2,3,0))
+    target_image = get_truth(self.path,index)
+    aux = get_aux(self.path,index)
+    input_image=np.concatenate([input_image,aux],-1)
+    input_image=input_image.reshape(*input_image.shape[:2],-1)
 
-    # Get the indices of target channels
-    target_channel_indices = input_channel_indices[:self.num_main_channels]
+    input_image  = input_image [oy:oy+sy, ox:ox+sx]
+    target_image = target_image[oy:oy+sy, ox:ox+sx]
 
-    # Crop the input and target images
-    if self.clean_aux:
-      # Get the auxiliary features from the target image
-      aux_channel_indices = input_channel_indices[self.num_main_channels:]
-      input_image  = input_image [oy:oy+sy, ox:ox+sx, target_channel_indices]
-      aux_image    = target_image[oy:oy+sy, ox:ox+sx, aux_channel_indices]
-      target_image = target_image[oy:oy+sy, ox:ox+sx, target_channel_indices]
-      input_image  = np.concatenate((input_image, aux_image), axis=2)
-    else:
-      # Get the auxiliary features from the input image
-      input_image  = input_image [oy:oy+sy, ox:ox+sx, input_channel_indices]
-      target_image = target_image[oy:oy+sy, ox:ox+sx, target_channel_indices]
-
-    # Convert the tiles to tensors
-    # Copying is required because PyTorch does not support non-writeable tensors
     return image_to_tensor(input_image.copy()), image_to_tensor(target_image.copy())
