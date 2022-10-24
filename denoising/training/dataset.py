@@ -85,7 +85,7 @@ class TrainingDataset(PreprocessedDataset):
     self.path = "/home/ascardigli/blender-3.2.2-linux-x64/suntemple/"
     self.num_images=1000
   def __len__(self):
-    return 1000
+    return self.num_images
 
   def __getitem__(self, index):
     # Get the input and target images
@@ -164,16 +164,57 @@ class ValidationDataset(PreprocessedDataset):
   def __init__(self, cfg, name):
     super(ValidationDataset, self).__init__(cfg, name)
 
-    self.path = "~/blender-3.2.2-linux-x64/suntemple/"
+    self.path = "/home/ascardigli/blender-3.2.2-linux-x64/suntemple/"
+
     self.num_images=400
+    self.tiles = []
+
+    if self.num_images == 0:
+      return
+
+    """
+    # Split the images into tiles
+    for sample_index in range(self.num_images):
+      # Get the input image
+      input_name,  _ = self.samples[sample_index]
+      input_image, _ = self.images[input_name]
+
+      # Get the size of the image
+      height = input_image.shape[0]
+      width  = input_image.shape[1]
+      if height < self.tile_size or width < self.tile_size:
+        error('image is smaller than the tile size')
+
+      # Compute the number of tiles
+      num_tiles_y = height // self.tile_size
+      num_tiles_x = width  // self.tile_size
+
+      # Compute the start offset for centering
+      start_y = (height % self.tile_size) // 2
+      start_x = (width  % self.tile_size) // 2
+
+      # Add the tiles
+      for y in range(num_tiles_y):
+        for x in range(num_tiles_x):
+          oy = start_y + y * self.tile_size
+          ox = start_x + x * self.tile_size
+
+          if self.main_feature == 'sh1':
+            for k in range(0, 9, 3):
+              ch = input_channel_indices[k:k+3] + input_channel_indices[9:]
+              self.tiles.append((sample_index, oy, ox, ch))
+          else:
+            self.tiles.append((sample_index, oy, ox, input_channel_indices))
+    """
 
       
   def __len__(self):
-    return 400
+    return self.num_images
 
   def __getitem__(self, index):
     # Get the tile
-    sample_index, oy, ox, input_channel_indices = self.tiles[index]
+ #   sample_index, oy, ox, input_channel_indices = self.tiles[index]
+    index=index+1000
     sy = sx = self.tile_size
 
     input_name = "-"+str(index).zfill(4)+".png"
@@ -191,7 +232,7 @@ class ValidationDataset(PreprocessedDataset):
     input_image=np.concatenate([input_image,aux],-1)
     input_image=input_image.reshape(*input_image.shape[:2],-1)
 
-    input_image  = input_image [oy:oy+sy, ox:ox+sx]
-    target_image = target_image[oy:oy+sy, ox:ox+sx]
+#    input_image  = input_image [oy:oy+sy, ox:ox+sx]
+#    target_image = target_image[oy:oy+sy, ox:ox+sx]
 
     return image_to_tensor(input_image.copy()), image_to_tensor(target_image.copy())
