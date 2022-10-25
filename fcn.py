@@ -69,7 +69,7 @@ class FCN(TorchModelV2, nn.Module):
                     kernel,
                     stride,
                     padding,
-                    activation_fn=activation,
+                    activation_fn="linear" #activation,
                 )
             )
             in_channels = out_channels
@@ -98,96 +98,23 @@ class FCN(TorchModelV2, nn.Module):
             layer_sizes = post_fcnet_hiddens[:-1] + (
                 [num_outputs] if post_fcnet_hiddens else []
             )
-            for i, out_size in enumerate(layer_sizes):
-                layers.append(
-                    SlimFC(
-                        in_size=out_channels,
-                        out_size=out_size,
-                        activation_fn=post_fcnet_activation,
-                        initializer=normc_initializer(1.0),
-                    )
-                )
-                out_channels = out_size
 
-        # Finish network normally (w/o overriding last layer size with
-        # `num_outputs`), then add another linear one of size `num_outputs`.
-        else:
-            layers.append(
-                SlimConv2d(
+        self._convs = nn.Sequential(*layers)
+        print(self._convs)
+        # Build the value layers
+        self._value_branch_separate = self._value_branch = None
+        if vf_share_layers:
+            out_channels, kernel, stride = filters[-1]
+            self._value_branch =      SlimConv2d(
                     in_channels,
                     out_channels,
                     kernel,
                     stride,
-                    None,  # padding=valid
-                    activation_fn=activation,
+                    None,
+                    activation_fn="relu",
                 )
-            )
 
-            # num_outputs defined. Use that to create an exact
-            # `num_output`-sized (1,1)-Conv2D.
-            if num_outputs:
-                in_size = [
-                    np.ceil((in_size[0] - kernel[0]) / stride),
-                    np.ceil((in_size[1] - kernel[1]) / stride),
-                ]
-                padding, _ = same_padding(in_size, [1, 1], [1, 1])
-                if post_fcnet_hiddens:
-                    layers.append(nn.Flatten())
-                    in_size = out_channels
-                    # Add (optional) post-fc-stack after last Conv2D layer.
-                    for i, out_size in enumerate(post_fcnet_hiddens + [num_outputs]):
-                        layers.append(
-                            SlimFC(
-                                in_size=in_size,
-                                out_size=out_size,
-                                activation_fn=post_fcnet_activation
-                                if i < len(post_fcnet_hiddens) - 1
-                                else None,
-                                initializer=normc_initializer(1.0),
-                            )
-                        )
-                        in_size = out_size
-                    # Last layer is logits layer.
-                    self._logits = layers.pop()
-
-                else:
-                    self._logits = SlimConv2d(
-                        out_channels,
-                        num_outputs,
-                        [1, 1],
-                        1,
-                        padding,
-                        activation_fn=None,
-                    )
-
-            # num_outputs not known -> Flatten, then set self.num_outputs
-            # to the resulting number of nodes.
-            else:
-                self.last_layer_is_flattened = True
-                layers.append(nn.Flatten())
-
-        self._convs = nn.Sequential(*layers)
-
-        # If our num_outputs still unknown, we need to do a test pass to
-        # figure out the output dimensions. This could be the case, if we have
-        # the Flatten layer at the end.
-        if self.num_outputs is None:
-            # Create a B=1 dummy sample and push it through out conv-net.
-            dummy_in = (
-                torch.from_numpy(self.obs_space.sample())
-                .permute(2, 0, 1)
-                .unsqueeze(0)
-                .float()
-            )
-            dummy_out = self._convs(dummy_in)
-            self.num_outputs = dummy_out.shape[1]
-
-        # Build the value layers
-        self._value_branch_separate = self._value_branch = None
-        if vf_share_layers:
-            self._value_branch = SlimFC(
-                out_channels, 1, initializer=normc_initializer(0.01), activation_fn=None
-            )
+            print(self._value_branch)
         else:
             vf_layers = []
             (w, h, in_channels) = obs_space.shape
@@ -201,7 +128,7 @@ class FCN(TorchModelV2, nn.Module):
                         kernel,
                         stride,
                         padding,
-                        activation_fn=activation,
+                        activation_fn="relu"#activation,
                     )
                 )
                 in_channels = out_channels
@@ -215,22 +142,13 @@ class FCN(TorchModelV2, nn.Module):
                     kernel,
                     stride,
                     None,
-                    activation_fn=activation,
+                    activation_fn="relu",
                 )
             )
 
-            vf_layers.append(
-                SlimConv2d(
-                    in_channels=out_channels,
-                    out_channels=1,
-                    kernel=1,
-                    stride=1,
-                    padding=None,
-                    activation_fn=None,
-                )
-            )
             self._value_branch_separate = nn.Sequential(*vf_layers)
 
+            print(self._value_branch_separate)
         # Holds the current "base" output (before logits layer).
         self._features = None
 
@@ -361,13 +279,13 @@ class FCN1(TorchModelV2, nn.Module):
                 in_channels=obs_space.shape[2]
 
             layers.append(
-                SlimConv2d(
+                Conv2d(
                     in_channels,
                     out_channels,
                     kernel,
                     stride,
-                    padding,
-                    activation_fn=activation,
+                    padding[:2],
+                #    activation_fn=activation,
                 )
             )
             in_size = out_size

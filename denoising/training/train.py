@@ -29,7 +29,6 @@ def main():
 # Worker function
 def main_worker(rank, cfg):
   # Initialize the worker
-  print('1')
   distributed = init_worker(rank, cfg)
 
   # Initialize the random seed
@@ -111,7 +110,6 @@ def main_worker(rank, cfg):
       print('Training images:', train_data.num_images)
   else:
     error('no training images')
-  print("on va la?")
   train_loader, train_sampler = get_data_loader(rank, cfg, train_data, shuffle=True)
   train_steps_per_epoch = len(train_loader)
 
@@ -122,7 +120,6 @@ def main_worker(rank, cfg):
       print('Validation images:', valid_data.num_images)
     valid_loader, valid_sampler = get_data_loader(rank, cfg, valid_data, shuffle=False)
     valid_steps_per_epoch = len(valid_loader)
-
   # Initialize the learning rate scheduler
   lr_scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
@@ -133,24 +130,21 @@ def main_worker(rank, cfg):
     div_factor=(25. if cfg.lr is None else cfg.max_lr / cfg.lr),
     final_div_factor=1e4,
     last_epoch=last_epoch-1)
-
   if lr_scheduler.last_epoch != last_epoch:
     error('failed to restore LR scheduler state')
 
   # Check whether AMP is enabled
-  amp_enabled = cfg.precision == 'mixed'
+  amp_enabled = False #cfg.precision == 'mixed'
 
   if amp_enabled:
     # Initialize the gradient scaler
     scaler = amp.GradScaler()
-
   # Initialize the summary writer
   log_dir = get_result_log_dir(result_dir)
   if rank == 0:
     summary_writer = SummaryWriter(log_dir)
     if step == 0:
       summary_writer.add_scalar('learning_rate', lr_scheduler.get_last_lr()[0], 0)
-
   # Training and evaluation loops
   if rank == 0:
     print()

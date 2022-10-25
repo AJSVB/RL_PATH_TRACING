@@ -244,7 +244,7 @@ class CustomEnv(gym.Env):
     a,b,c,d=self.crop()
     gd= self.ground_truth[:,:,a:b,c:d]
     old = self.simulation.render()[a:b,c:d]
-    i=-0 #works with 0 outside of tune.py TODO
+    i=0 #works with 0 outside of tune.py TODO
     old = MultiSSIM([old], [gd],i)[0]
 
     if L!=1:
@@ -282,7 +282,7 @@ class CustomEnv(gym.Env):
         self.top = new
         if self.top>.9805:
          self.insight()
-    reward = 400*(new-.95)**2
+    reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count
     return observation.numpy().transpose(1,2,0),reward.detach().numpy(),done, {}
 

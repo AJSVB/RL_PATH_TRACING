@@ -11,7 +11,6 @@ from config import *
 from util import *
 from image import *
 from color import *
-import tza
 
 
 def get_data_loader(rank, cfg, dataset, shuffle=False):

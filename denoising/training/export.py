@@ -11,7 +11,6 @@ import torch
 from config import *
 from util import *
 from result import *
-import tza
 
 def main():
   # Parse the command line arguments
