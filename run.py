@@ -52,43 +52,43 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 
 #  "clip_param": 0.9726497874484089,   
 #"decay": 0.97,
-#, "entropy_coeff": 1e-7,
+ "entropy_coeff": 1e-7,
 #   "epsilon": 0.21244584717938497,   "grad_clip": 4000.0,   "kl_coeff": 0.49175633009791462,
 #  "kl_target": 0.4022912297489361,   "lambda": 0.07157041286837718,   "lr": 1e-2,  "momentum": 0.9,
  # "use_critic": False,  "use_gae": True,   "use_kl_loss": True,  
 #   "vf_loss_coeff": 0.3323018458897308,
-   "optimizer": "adabelief", 
+ ##  "optimizer": "adabelief", 
 
 
 
 #            "use_critic":tune.choice([True,False]),
 #            "use_gae":tune.choice([True,False]),
 #            "use_kl_loss":tune.choice([True,False]),
-            "kl_coeff": 5e-3,
-            "kl_target": 5e-4,
-            "lambda": .2,
-            "clip_param": .15,
-            "lr": 2e-3 ,#tune.choice([1e-5,3e-5,1e-6,3e-6]) ,
-            "grad_clip": 4,
+           ## "kl_coeff": 5e-3,
+  ##          "kl_target": 5e-4,
+   ##         "lambda": .2,
+    ##        "clip_param": .15,
+            "lr": 1e-5 ,#tune.choice([1e-5,3e-5,1e-6,3e-6]) ,
+    ##        "grad_clip": 4,
           #"momentum": tune.uniform(.5,1) ,
           #"epsilon": .3,
-          "vf_loss_coeff": .5,
-          "entropy_coeff": 1e-5 ,
+      ##    "vf_loss_coeff": .5,
+       ##   "entropy_coeff": 1e-5 ,
 
 #"sgd_minibatch_size":16,
 
 
-"gamma":0,
+#"gamma":0,
 "normalize_actions":False,
-"train_batch_size":4, #Was 128
-#"num_envs_per_worker":1,
-        'num_workers':16,
+"train_batch_size":12, #Was 128
+"num_envs_per_worker":2,
+        'num_workers':8,
 #"",
 #"evaluation_num_workers":1,
-'num_cpus_per_worker':3,
-'num_gpus_per_worker':.25,
+'num_cpus_per_worker':6,
+'num_gpus_per_worker':.5,
 #"evaluation_interval":10,
-"rollout_fragment_length":2, #was20
+"rollout_fragment_length":4, #was20
   "model":{
    "custom_model":"FCN",
 "conv_filters":[[16, [c, c], 1],[2, [c, c], 1], [1, [c, c], 1]],

@@ -58,7 +58,7 @@ class FCN(TorchModelV2, nn.Module):
 
         layers = []
         (w, h, in_channels) = obs_space.shape
-
+        act = "relu"
         in_size = [w, h]
         for out_channels, kernel, stride in filters[:-1]:
             padding, out_size = same_padding(in_size, kernel, stride)
@@ -69,11 +69,12 @@ class FCN(TorchModelV2, nn.Module):
                     kernel,
                     stride,
                     padding,
-                    activation_fn="linear" #activation,
+                    activation_fn=act #activation,
                 )
             )
             in_channels = out_channels
             in_size = out_size
+            act='linear'
 
         out_channels, kernel, stride = filters[-1]
 
@@ -185,7 +186,7 @@ class FCN(TorchModelV2, nn.Module):
                 logits = logits.squeeze(2)
             else:
                 logits = conv_out
-            return logits, state
+            return torch.nn.Tanh()(logits)*10, state
         else:
             return conv_out, state
 
