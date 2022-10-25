@@ -68,7 +68,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
             "kl_target": 5e-4,
             "lambda": .2,
             "clip_param": .15,
-            "lr": 2e-4 ,#tune.choice([1e-5,3e-5,1e-6,3e-6]) ,
+            "lr": 2e-3 ,#tune.choice([1e-5,3e-5,1e-6,3e-6]) ,
             "grad_clip": 4,
           #"momentum": tune.uniform(.5,1) ,
           #"epsilon": .3,
@@ -91,7 +91,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 "rollout_fragment_length":2, #was20
   "model":{
    "custom_model":"FCN",
-"conv_filters":[[2, [c, c], 1], [1, [c, c], 1]],
+"conv_filters":[[16, [c, c], 1],[2, [c, c], 1], [1, [c, c], 1]],
 "fcnet_hiddens":[],
 "post_fcnet_hiddens":[],
 "post_fcnet_activation":"linear",
