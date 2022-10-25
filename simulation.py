@@ -280,7 +280,7 @@ class CustomEnv(gym.Env):
     if  self.top<new:
         print(new)
         self.top = new
-        if self.top>.9805:
+        if self.top>.9806:
          self.insight()
     reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count

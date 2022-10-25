@@ -61,6 +61,10 @@ class FCN(TorchModelV2, nn.Module):
         act = "relu"
         in_size = [w, h]
         for out_channels, kernel, stride in filters[:-1]:
+
+#            if out_channels==2:
+#              act='linear'
+
             padding, out_size = same_padding(in_size, kernel, stride)
             layers.append(
                 SlimConv2d(
@@ -74,8 +78,7 @@ class FCN(TorchModelV2, nn.Module):
             )
             in_channels = out_channels
             in_size = out_size
-            act='linear'
-
+            act="relu"
         out_channels, kernel, stride = filters[-1]
 
         # No final linear: Last layer has activation function and exits with
