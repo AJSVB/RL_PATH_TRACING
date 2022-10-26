@@ -82,12 +82,12 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 #"gamma":0,
 "normalize_actions":False,
 "train_batch_size":4, #Was 128
-#"num_envs_per_worker":1,
-        'num_workers':8,
+"num_envs_per_worker":1,
+        'num_workers':12,
 #"",
 #"evaluation_num_workers":1,
-'num_cpus_per_worker':6,
-'num_gpus_per_worker':.5,
+'num_cpus_per_worker':4,
+'num_gpus_per_worker':.33,
 #"evaluation_interval":10,
 "rollout_fragment_length":2, #was20
   "model":{
