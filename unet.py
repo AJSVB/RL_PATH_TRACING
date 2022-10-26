@@ -74,7 +74,7 @@ class UNet(nn.Module):
         enc_chs=(in_channels,in_channels*2,in_channels*4,in_channels*8,in_channels*16)
         dec_chs=(in_channels*16,in_channels*8,in_channels*4,in_channels*2)
 
-        self.tail        = nn.Conv2d(temp, 6, 3,padding=1)
+        self.tail        = nn.Conv2d(temp, in_channels, 3,padding=1)
         self.encoder     = Encoder(enc_chs)
         self.decoder     = Decoder(dec_chs)
         self.head        = nn.Conv2d(dec_chs[-1], num_class, 3,padding=1)
