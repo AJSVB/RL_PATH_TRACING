@@ -189,7 +189,7 @@ class FCN(TorchModelV2, nn.Module):
                 logits = logits.squeeze(2)
             else:
                 logits = conv_out
-            return torch.nn.Tanh()(logits)*10, state
+            return torch.nn.Tanh()(logits)*20-10, state
         else:
             return conv_out, state
 

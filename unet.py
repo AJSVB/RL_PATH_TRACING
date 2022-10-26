@@ -69,14 +69,18 @@ class Decoder(nn.Module):
 class UNet(nn.Module):
     def __init__(self, in_channels, enc_chs=(6,8,8,16,32), dec_chs=(64, 32, 16, 8), num_class=2, retain_dim=False, out_sz=(720,1280)):
         super().__init__()
+        temp=in_channels
+        in_channels=6
         enc_chs=(in_channels,in_channels*2,in_channels*4,in_channels*8,in_channels*16)
         dec_chs=(in_channels*16,in_channels*8,in_channels*4,in_channels*2)
 
+        self.tail        = nn.Conv2d(temp, 6, 3,padding=1)
         self.encoder     = Encoder(enc_chs)
         self.decoder     = Decoder(dec_chs)
         self.head        = nn.Conv2d(dec_chs[-1], num_class, 3,padding=1)
 
     def forward(self, x):
+        x = self.tail(x)
         enc_ftrs = self.encoder(x)
         out      = self.decoder(enc_ftrs[::-1][0], enc_ftrs[::-1][1:])
         out      = self.head(out)
@@ -106,15 +110,14 @@ class UN(TorchModelV2, nn.Module):
         nn.Module.__init__(self)
 
         
-        (in_channels,w, h) = obs_space.shape
+        (w, h,in_channels) = obs_space.shape
         self._convs = UNet(in_channels) #DualResNet(BasicBlock, [2, 2, 2, 2], num_classes=2, planes=32, spp_planes=128, head_planes=64, augment=in_channels)
 
 
 
 
         c=3
-        filters = [
-                                        [2,[c,c], [1,1]],
+        filters = [                     [2,[c,c], [1,1]],
                                         [1,[c,c], [1,1]]]
         layers=[]
         in_size = [w, h]
@@ -126,14 +129,13 @@ class UN(TorchModelV2, nn.Module):
                     out_channels,
                     kernel,
                     stride,
-                    padding
-                #    activation_fn=activation,
+                    padding,
+                    activation_fn="relu",
                 )
             )
+           
            # layers.append(nn.Tanh())
            # in_channels = out_channels
-            in_size = out_size
-
         self.head = nn.Sequential(*(layers[-2:1]))
         self.head_value = nn.Sequential(*layers[-1:0])
 
@@ -144,13 +146,11 @@ class UN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-         x = input_dict["obs"].type(torch.float32)
+         x = input_dict["obs"].type(torch.float32).permute(0, 3, 1, 2)
          x = self._convs(x)
-         x = nn.Tanh()(x)
          self.tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
          o=self.head(x)
          return o
-
 
     @override(TorchModelV2)
     def forward(
@@ -159,12 +159,9 @@ class UN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-
       out=self.f(input_dict,state,seq_lens)
-      a=out[:,0]
-      b=nn.Sigmoid()(out[:,1])
-      out = torch.cat((a,b),1)
-      return out.reshape(input_dict["obs"].shape[0], -1)/2, state
+      out=out.reshape(out.shape[0],-1)
+      return torch.nn.Tanh()(out)*20-10, state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:

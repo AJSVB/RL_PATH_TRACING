@@ -83,15 +83,15 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 "normalize_actions":False,
 "train_batch_size":4, #Was 128
 "num_envs_per_worker":1,
-        'num_workers':12,
+        'num_workers':8,
 #"",
 #"evaluation_num_workers":1,
-'num_cpus_per_worker':4,
-'num_gpus_per_worker':.33,
+'num_cpus_per_worker':6,
+'num_gpus_per_worker':.5,
 #"evaluation_interval":10,
 "rollout_fragment_length":2, #was20
   "model":{
-   "custom_model":"FCN",
+   "custom_model":"UN",
 "conv_filters":[[16, [c, c], 1],[16, [c, c], 1],[2, [c, c], 1], [1, [c, c], 1]],
 "fcnet_hiddens":[],
 "post_fcnet_hiddens":[],

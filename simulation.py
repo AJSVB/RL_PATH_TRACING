@@ -244,7 +244,7 @@ class CustomEnv(gym.Env):
     a,b,c,d=self.crop()
     gd= self.ground_truth[:,:,a:b,c:d]
     old = self.simulation.render()[a:b,c:d]
-    i=0 #works with 0 outside of tune.py TODO
+    i=-0 #works with 0 outside of tune.py TODO
     old = MultiSSIM([old], [gd],i)[0]
 
     if L!=1:
