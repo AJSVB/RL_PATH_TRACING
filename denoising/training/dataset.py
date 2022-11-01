@@ -183,67 +183,61 @@ class ValidationDataset(PreprocessedDataset):
     if self.num_images == 0:
       return
 
-    """
-    # Split the images into tiles
-    for sample_index in range(self.num_images):
-      # Get the input image
-      input_name,  _ = self.samples[sample_index]
-      input_image, _ = self.images[input_name]
-
-      # Get the size of the image
-      height = input_image.shape[0]
-      width  = input_image.shape[1]
-      if height < self.tile_size or width < self.tile_size:
-        error('image is smaller than the tile size')
-
-      # Compute the number of tiles
-      num_tiles_y = height // self.tile_size
-      num_tiles_x = width  // self.tile_size
-
-      # Compute the start offset for centering
-      start_y = (height % self.tile_size) // 2
-      start_x = (width  % self.tile_size) // 2
-
-      # Add the tiles
-      for y in range(num_tiles_y):
-        for x in range(num_tiles_x):
-          oy = start_y + y * self.tile_size
-          ox = start_x + x * self.tile_size
-
-          if self.main_feature == 'sh1':
-            for k in range(0, 9, 3):
-              ch = input_channel_indices[k:k+3] + input_channel_indices[9:]
-              self.tiles.append((sample_index, oy, ox, ch))
-          else:
-            self.tiles.append((sample_index, oy, ox, input_channel_indices))
-    """
-
-      
+     
   def __len__(self):
     return self.num_images
+
+  def sample(self,index):
+
+
+    samples = np.concatenate([get_ith_image(self.path,i,index) for i in range(8)],0)
+    samples = np.concatenate([samples,np.ones((1,720,1280,3))*-1],0)
+    idxs = np.random.normal(loc=4*np.ones((720,1280,3)))
+    idxs = np.round(idxs).astype(int)
+    idxs[idxs<0]=0
+    idxs[idxs>7] = 7
+    sampling = np.arange(8).reshape(8,1,1,1)
+    sampling = np.repeat(sampling,720,axis=1)
+    sampling = np.repeat(sampling,1280,axis=2) 
+    sampling = np.repeat(sampling,3,axis=3) 
+    sampling = sampling - idxs
+    sampling[sampling<0] = 8
+
+    return np.take_along_axis(samples,sampling,0)
+
+
+
+
+
 
   def __getitem__(self, index):
     # Get the tile
  #   sample_index, oy, ox, input_channel_indices = self.tiles[index]
+    sy = sx = self.tile_size
+    height = 720
+    width  = 1280
+    oy = randint(height - sy + 1)
+    ox = randint(width  - sx + 1)
+
+
+
     index=index+1000
     sy = sx = self.tile_size
 
     input_name = "-"+str(index).zfill(4)+".png"
     target_name = "gd"+str(index).zfill(4)+".png"
-    idxs = np.random.normal(loc=4*np.ones((720,1280,3)))
-    idxs = np.round(idxs).astype(int)
-    idxs[idxs<0]=0
-    idxs[idxs>15] = 15
-    sampling = np.round(np.random.rand(8,720,1280,3)*idxs).astype(int)
-    samples = np.concatenate([get_ith_image(self.path,i,index) for i in range(16)],0)
-    samples = np.take_along_axis(samples,sampling,0)
+    samples = self.sample(index) 
     input_image = np.transpose(samples,(1,2,3,0))
+
+
     target_image = get_truth(self.path,index)
     aux = get_aux(self.path,index)
     input_image=np.concatenate([input_image,aux],-1)
     input_image=input_image.reshape(*input_image.shape[:2],-1)
 
-#    input_image  = input_image [oy:oy+sy, ox:ox+sx]
-#    target_image = target_image[oy:oy+sy, ox:ox+sx]
+    input_image  = input_image [oy:oy+sy, ox:ox+sx]
+    target_image = target_image[oy:oy+sy, ox:ox+sx]
+
+
 
     return image_to_tensor(input_image.copy()), image_to_tensor(target_image.copy())
