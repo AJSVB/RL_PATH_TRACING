@@ -7,7 +7,7 @@ import argparse
 import time
 import torch
 
-from util import *
+from .util import *
 
 # Returns the main feature from a list of features
 def get_main_feature(features):
@@ -187,6 +187,7 @@ def parse_args(cmd=None, description=None):
                           default=(cmd in {'preprocess', 'infer', 'export'}),
                           help='makes computations deterministic (slower performance)')
 
+  sys.argv=['']
   cfg = parser.parse_args()
 
   # Load and apply configuration from file if specified

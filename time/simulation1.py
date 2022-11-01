@@ -12,7 +12,7 @@ import torch
 import unet1
 from filelock import FileLock 
 import os
-from training import  dataset
+from training import  train
 
 
 
@@ -75,7 +75,11 @@ def load_albedo(path,frame_number=1,HEIGHT=480,WIDTH=640):
 
 class PhysicSimulation:
 
-    def __init__(self,path,spp,frame_number=1, sppps=.1,list=None,add = None,albedo=None,HEIGHT=480,WIDTH=730,max=10,denoising=True,partition=None,CST=1):
+    def __init__(self,path,spp,frame_number=1, sppps=.1,HEIGHT=480,WIDTH=730,max=10,denoising=True,partition=None,CST=1):
+
+        model,data = train.main_worker()
+        self.dataset = data.data(0)
+        print(self.dataset.shape)
         self.partition = partition
         self.CST=CST
         self.HEIGHT =  HEIGHT
@@ -225,12 +229,8 @@ class CustomEnv(gym.Env):
     self.CST= 10
     self.max = int((self.spp)/self.sppps)  *self.CST  # #
     self.id = env_config.vector_index
-    self.list = [get_ith_image(self.path,i,self.frame_number,self.HEIGHT,self.WIDTH) for i in range(self.max)]
 
-    self.add = load_additional(self.path,1,self.HEIGHT,self.WIDTH)
-    self.albedo = load_albedo(self.path,1,self.HEIGHT,self.WIDTH)
-
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
 
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH/L/L),))
     self.observation_space = spaces.Box(low=-1e-2, high=1, shape=
@@ -310,7 +310,7 @@ class CustomEnv(gym.Env):
     self.counter+=4
     if self.counter==4:
         self.counter=0
-        self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.list,self.add,self.albedo,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
+        self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
     a,b,c,d=self.crop()
     return self.simulation.observe().numpy()[:,a:b,c:d].transpose(1,2,0)
     

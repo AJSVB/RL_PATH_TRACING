@@ -12,12 +12,7 @@ import torch.cuda.amp as amp
 import torch.distributed as dist
 from torch.utils.tensorboard import SummaryWriter
 
-from config import *
-from dataset import *
-from model import *
-from loss import *
-from result import *
-from util import *
+from .config import *
 
 def main():
   # Parse the command line arguments
@@ -27,7 +22,8 @@ def main():
   start_workers(cfg, main_worker)
 
 # Worker function
-def main_worker(rank, cfg):
+def main_worker():
+  cfg = parse_args(description='Trains a model using preprocessed datasets.')
   model = get_model(cfg)
   model.to(device)
   criterion = get_loss_function(cfg)
