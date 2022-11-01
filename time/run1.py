@@ -36,7 +36,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
     c = int(c)
     sppps = float(sppps)
     a = time.time()
-    algo = appo.APPO(env=simulation.CustomEnv,config={
+    algo = appo.APPO(env=simulation1.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
 'frame_number':1, 'spp':spp, "sppps":sppps,"denoising":True,"prob_sampling":True,"partition":[1]
             },

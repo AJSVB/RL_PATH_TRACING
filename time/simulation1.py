@@ -10,10 +10,10 @@ import torchvision.transforms as T
 import random
 import torch
 import unet1
-import denoising1
 from filelock import FileLock 
 import os
-import dataset
+from training import  dataset
+
 
 
 def norm(a,denoising):
@@ -91,6 +91,7 @@ class PhysicSimulation:
         self.denoising=denoising
         self.a=torch.Tensor(range(1280)).unsqueeze(0).repeat(720,1).unsqueeze(-1)/1280.
         self.b=torch.Tensor(range(720)).unsqueeze(1).repeat(1,1280).unsqueeze(-1)/720.
+        _,_ = main_worker()
     def reset(self):
         self.permutation = torch.randperm(self.max)
         self.observations = self.albedo # self.dataset[:,:,self.permutation[0]] 
