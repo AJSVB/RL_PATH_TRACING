@@ -13,6 +13,9 @@ import torch.distributed as dist
 from torch.utils.tensorboard import SummaryWriter
 
 from .config import *
+from .model import *
+
+
 
 def main():
   # Parse the command line arguments

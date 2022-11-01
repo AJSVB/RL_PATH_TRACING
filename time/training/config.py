@@ -44,9 +44,12 @@ def parse_args(cmd=None, description=None):
   def get_default_device():
     return 'cuda' if torch.cuda.is_available() else 'cpu'
 
+  sys.argv=['']
+  
   if cmd is None:
     cmd, _ = os.path.splitext(os.path.basename(sys.argv[0]))
-
+  cmd = "train"
+  print(cmd)
   parser = argparse.ArgumentParser(description=description)
   parser.usage = '\rIntel(R) Open Image Denoise - Training\n' + parser.format_usage()
   advanced = parser.add_argument_group('optional advanced arguments')
@@ -187,7 +190,6 @@ def parse_args(cmd=None, description=None):
                           default=(cmd in {'preprocess', 'infer', 'export'}),
                           help='makes computations deterministic (slower performance)')
 
-  sys.argv=['']
   cfg = parser.parse_args()
 
   # Load and apply configuration from file if specified
@@ -240,4 +242,6 @@ def parse_args(cmd=None, description=None):
   # Print PyTorch version
   print('PyTorch:', torch.__version__)
 
+
+  print(cfg)
   return cfg

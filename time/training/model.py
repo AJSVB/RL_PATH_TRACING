@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from dataset import *
-from util import *
+from .dataset import *
+from .util import *
 
 def get_model(cfg):
   type = cfg.model
