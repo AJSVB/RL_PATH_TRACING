@@ -47,6 +47,11 @@ class PreprocessedDataset(Dataset):
 ## -----------------------------------------------------------------------------
 from PIL import Image
 import torchvision.transforms.functional as TF
+
+from functools import lru_cache
+
+
+@lru_cache(maxsize = None)
 def get_ith_image(path,i,frame_number):
     image = Image.open(path+str(i).zfill(2) + "-" + str(frame_number).zfill(4)+'.png')
     #x = TF.to_tensor(image)
@@ -133,8 +138,18 @@ class TrainingDataset(PreprocessedDataset):
     input_image=input_image[:,:,color_order,:]
     target_image=target_image[:,:,color_order]
     
-    input_image  = input_image [oy:oy+sy, ox:ox+sx]
-    target_image = target_image[oy:oy+sy, ox:ox+sx]
+
+    
+
+
+    def f(input_image):
+     a=np.concatenate([np.expand_dims(input_image[256*(i%2):256*(i%2+1),256*int(i/2):256*(int(i/2)+1)],-2) for i in range(10)],-2)
+     return a
+
+    input_image = f(input_image)
+    target_image = f(target_image)
+
+
 
     # Randomly transform the tiles to improve training quality
     if rand() < 0.5:
@@ -151,21 +166,11 @@ class TrainingDataset(PreprocessedDataset):
       # Transpose
       input_image  = np.swapaxes(input_image,  0, 1)
       target_image = np.swapaxes(target_image, 0, 1)
-      sy, sx = sx, sy
-
+    
     input_image=input_image.reshape(*input_image.shape[:2],-1)
+    target_image=target_image.reshape(*target_image.shape[:2],-1)
 
-    # Zero pad the tiles (always makes a copy)
-    pad_size = ((0, self.tile_size - sy), (0, self.tile_size - sx), (0, 0))
-    input_image  = np.pad(input_image,  pad_size, mode='constant')
-    target_image = np.pad(target_image, pad_size, mode='constant')
-
-
-    # DEBUG: Save the tile
-    #save_image('tile_%d.png' % index, target_image)
-
-    # Convert the tiles to tensors
-    return image_to_tensor(input_image), image_to_tensor(target_image)
+    return image_to_tensor(input_image.copy()), image_to_tensor(target_image.copy())
 
 ## -----------------------------------------------------------------------------
 ## Validation dataset
@@ -208,9 +213,7 @@ class ValidationDataset(PreprocessedDataset):
 
 
 
-
-
-  def __getitem__(self, index):
+  def __getitem__(self,index):
     # Get the tile
  #   sample_index, oy, ox, input_channel_indices = self.tiles[index]
     sy = sx = self.tile_size

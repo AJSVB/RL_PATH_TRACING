@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+
+## Copyright 2018-2021 Intel Corporation
+## SPDX-License-Identifier: Apache-2.0
 
 import os
 import sys
@@ -120,6 +124,7 @@ def main_worker(rank, cfg):
       print('Validation images:', valid_data.num_images)
     valid_loader, valid_sampler = get_data_loader(rank, cfg, valid_data, shuffle=False)
     valid_steps_per_epoch = len(valid_loader)
+
   # Initialize the learning rate scheduler
   lr_scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
@@ -130,21 +135,24 @@ def main_worker(rank, cfg):
     div_factor=(25. if cfg.lr is None else cfg.max_lr / cfg.lr),
     final_div_factor=1e4,
     last_epoch=last_epoch-1)
+
   if lr_scheduler.last_epoch != last_epoch:
     error('failed to restore LR scheduler state')
 
   # Check whether AMP is enabled
-  amp_enabled = False #cfg.precision == 'mixed'
+  amp_enabled = cfg.precision == 'mixed'
 
   if amp_enabled:
     # Initialize the gradient scaler
     scaler = amp.GradScaler()
+
   # Initialize the summary writer
   log_dir = get_result_log_dir(result_dir)
   if rank == 0:
     summary_writer = SummaryWriter(log_dir)
     if step == 0:
       summary_writer.add_scalar('learning_rate', lr_scheduler.get_last_lr()[0], 0)
+
   # Training and evaluation loops
   if rank == 0:
     print()
@@ -167,6 +175,12 @@ def main_worker(rank, cfg):
     for i, batch in enumerate(train_loader, 0):
       # Get the batch
       input, target = batch
+
+      input = input.reshape(input.shape[0]*10,-1,*input.shape[2:])
+      target = target.reshape(target.shape[0]*10,-1,*target.shape[2:])
+
+
+
       input  = input.to(device,  non_blocking=True)
       target = target.to(device, non_blocking=True)
       if not amp_enabled:
@@ -274,3 +288,5 @@ def main_worker(rank, cfg):
 
 if __name__ == '__main__':
   main()
+
+
