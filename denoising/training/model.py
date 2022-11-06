@@ -130,6 +130,5 @@ class UNet(nn.Module):
     x = relu(self.dec_conv1b(x))     # dec_conv1b
 
     x = self.dec_conv0(x)            # dec_conv0
-
-
+    x=torch.nn.Sigmoid()(x)
     return x

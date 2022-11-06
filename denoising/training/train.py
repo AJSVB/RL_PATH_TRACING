@@ -192,61 +192,18 @@ def main_worker(rank, cfg):
         loss.backward()
         optimizer.step()
 
-
-
-    import matplotlib.pyplot as plt
-    import random
-    import time
-    if random.random()<1e-2:
-        def f(t):
-         def h(t):
-            a= [a for a in t if a!=-1 ]
-            return sum(a)/len(a)
-         a=0
-         b=t[0]*0
-         for i in range(256): 
-           for j in range(256):
-             b[i][j]=h(t[:,i,j])
-         return b   
-
-        def g(t):
-         return 1-torch.nn.ReLU()(1-torch.nn.ReLU()(t))
-        t=time.time()
-        print(input.shape)
-        d=int(input.shape[1]/3)
-        a=f(input[0,0:8]).unsqueeze(0)
-        print(torch.max(a))
-        print(torch.min(a))
-        b=f(input[0,d:d+8]).unsqueeze(0)
-        c=f(input[0,2*d:2*d+8]).unsqueeze(0)
-        temp=torch.cat([a,b,c],0)
-        plt.imshow(g(temp.permute(1,2,0).detach().cpu()))
-        plt.savefig("images/"+str(t)+"in.png")
-        plt.clf()
-
-        print(torch.max(x[0]))
-        print(torch.min(x[0]))
-
-        plt.imshow(g(x[0].permute(1,2,0).detach().cpu()))
-        plt.savefig("images/"+str(t)+"out.png")
-        plt.clf()
-
-    import matplotlib.pyplot as plt
-    import random
-    for i in range(66):
-         plt.imshow(input[0,i].detach().cpu())
-         plt.savefig("images/"+str(i)+".png")
-         plt.clf()
-    plt.imshow(target[0].permute(1,2,0).detach().cpu())
-    plt.savefig("images/target.png")
-    plt.clf()
-    plt.imshow(output[0].permute(1,2,0).detach().cpu())
-    plt.savefig("images/out.png")
-
-
-
-
-
+      import matplotlib.pyplot as plt
+      import random
+      if random.random()<1e-3:
+       for i in range(66):
+          plt.imshow(input[0,i].detach().cpu())
+          plt.savefig("images/"+str(i)+".png")
+          plt.clf()
+       plt.imshow(target[0].permute(1,2,0).detach().cpu())
+       plt.savefig("images/target.png")
+       plt.clf()
+       plt.imshow(output[0].permute(1,2,0).detach().cpu())
+       plt.savefig("images/out.png")
 
       # Next step
       step += 1
