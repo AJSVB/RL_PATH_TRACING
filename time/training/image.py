@@ -3,8 +3,8 @@ import os
 import numpy as np
 import torch
 
-from ssim import ssim, ms_ssim
-from util import *
+from .ssim import ssim, ms_ssim
+from .util import *
 
 ## -----------------------------------------------------------------------------
 ## Image operations

@@ -9,7 +9,7 @@ from torch.utils.data.distributed import DistributedSampler
 
 
 
-
+from .image import *
 
 class PreprocessedDataset(Dataset):
   def __init__(self, cfg, name):
@@ -30,12 +30,12 @@ def get_ith_image(path,i,frame_number):
     image = Image.open(path+str(i).zfill(2) + "-" + str(frame_number).zfill(4)+'.png')
     #x = TF.to_tensor(image)
     #x.unsqueeze_(0)
-    return np.expand_dims(image,0)
+    return np.expand_dims(image,0)/255.
 
 def get_truth(path,frame_number):
     image= Image.open(path + "gd"+str(frame_number).zfill(4)+".png")
     #x = TF.to_tensor(image)
-    return np.array(image)
+    return np.array(image)/255.
 
 
 def get_add(a,b,c):
@@ -43,6 +43,14 @@ def get_add(a,b,c):
       b="00UVUV"
     image= Image.open(a+b+c)
    # x = TF.to_tensor(image)
+    z= np.expand_dims(image,-1)
+    b=np.min(z)
+    a=np.max(z)
+    if b==a:
+      a = a if a else 1.
+      return z/a
+    else:
+      return (z-b)/(a-b)*1.
     return np.expand_dims(image,-1)
 
 
@@ -77,7 +85,6 @@ class ValidationDataset(PreprocessedDataset):
 
   def data(self,index):
     samples = np.concatenate([get_ith_image(self.path,i,index) for i in range(8)],0)
-    samples = np.concatenate([samples,np.ones((1,720,1280,3))*-1],0)
     return samples
 
   def sample(self,index):
@@ -95,8 +102,23 @@ class ValidationDataset(PreprocessedDataset):
     sampling = np.repeat(sampling,3,axis=3) 
     sampling = sampling - idxs
     sampling[sampling<0] = 8
-
+    
     return np.take_along_axis(samples,sampling,0)
+
+
+  def generate(self,samples,idxs):
+    samples = np.transpose(samples.reshape(720,720,3,8),(3,0,1,2))
+    samples = np.concatenate([samples,np.ones((1,720,720,3))*-1],0)
+    idxs=np.repeat(idxs.reshape(720,720,1),3,axis=-1)
+    idxs[idxs<0]=0
+    idxs[idxs>7] = 7
+    sampling = np.arange(8).reshape(8,1,1,1)
+    sampling = np.repeat(sampling,720,axis=1)
+    sampling = np.repeat(sampling,720,axis=2) 
+    sampling = np.repeat(sampling,3,axis=3) 
+    sampling = sampling - idxs
+    sampling[sampling<0] = 8
+    return torch.Tensor(np.take_along_axis(samples,sampling,0))
 
 
 
@@ -110,8 +132,8 @@ class ValidationDataset(PreprocessedDataset):
     target_image = get_truth(self.path,index)
     input_image = get_aux(self.path,index)
     input_image=input_image.reshape(*input_image.shape[:2],-1)
-    input_image  = input_image [:256,:256]
-    target_image = target_image[:256,:256]
+    input_image  = input_image [:720,:720]
+    target_image = target_image[:720,:720]
     return image_to_tensor(input_image.copy()), image_to_tensor(target_image.copy())
 
 
@@ -119,34 +141,15 @@ class ValidationDataset(PreprocessedDataset):
 
 
   def __getitem__(self, index,samples=None):
-    # Get the tile
- #   sample_index, oy, ox, input_channel_indices = self.tiles[index]
     sy = sx = self.tile_size
-    height = 720
-    width  = 1280
-    oy = randint(height - sy + 1)
-    ox = randint(width  - sx + 1)
-
-
-
-    sy = sx = self.tile_size
-
     input_name = "-"+str(index).zfill(4)+".png"
     target_name = "gd"+str(index).zfill(4)+".png"
     if samples is None:  
-      samples = self.sample(index) 
-    
-    input_image = np.transpose(samples,(1,2,3,0))
-
-
-    target_image = get_truth(self.path,index)
-    aux = get_aux(self.path,index)
+      sample = self.sample(index) 
+    input_image=samples
+    aux = get_aux(self.path,index)[:720,:720]
     input_image=np.concatenate([input_image,aux],-1)
     input_image=input_image.reshape(*input_image.shape[:2],-1)
 
-    input_image  = input_image [oy:oy+sy, ox:ox+sx]
-    target_image = target_image[oy:oy+sy, ox:ox+sx]
-
-
-
-    return image_to_tensor(input_image.copy()), image_to_tensor(target_image.copy())
+    input_image  = input_image [:720,:720]
+    return image_to_tensor(input_image.copy()).unsqueeze(0).float()

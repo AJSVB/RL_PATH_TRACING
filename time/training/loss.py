@@ -6,9 +6,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.cuda.amp as amp
 
-from util import *
-from image import *
-from ssim import SSIM, MS_SSIM
+from .util import *
+from .image import *
+from .ssim import SSIM, MS_SSIM
 
 def get_loss_function(cfg):
   type = cfg.loss

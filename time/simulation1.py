@@ -14,7 +14,7 @@ from filelock import FileLock
 import os
 from training import  train
 
-
+L=1
 
 def norm(a,denoising):
     if not denoising:
@@ -77,28 +77,28 @@ class PhysicSimulation:
 
     def __init__(self,path,spp,frame_number=1, sppps=.1,HEIGHT=480,WIDTH=730,max=10,denoising=True,partition=None,CST=1):
 
-        model,data = train.main_worker()
-        self.dataset = data.data(0)
-        print(self.dataset.shape)
+        self.model,self.data = train.main_worker()
+        self.model.eval()
+        self.dataset = np.transpose(self.data.data(0),(1,2,3,0))[:720,:720]
         self.partition = partition
+        self.add, self.gd = self.data.get(0)
+        self.add = self.add.permute(1,2,0).unsqueeze(-1).to(dtype=torch.float32)
+        self.gd=self.gd.to(dtype=torch.float32)
         self.CST=CST
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
-        self.dataset = cached(list)
         self.sppps = sppps
-        self.dataset=self.dataset.view( -1, *self.dataset.shape[2:])
-        self.add = add
-        self.albedo=albedo.reshape(-1,3)
+        self.shape=self.dataset.shape
+        self.dataset=self.dataset.reshape( -1,*self.dataset.shape[2:])
         self.max = max
         self.reset()
         self.updated=False
         self.denoising=denoising
-        self.a=torch.Tensor(range(1280)).unsqueeze(0).repeat(720,1).unsqueeze(-1)/1280.
-        self.b=torch.Tensor(range(720)).unsqueeze(1).repeat(1,1280).unsqueeze(-1)/720.
-        _,_ = main_worker()
+        self.a=torch.Tensor(range(720)).unsqueeze(0).repeat(720,1).unsqueeze(-1)/720.
+        self.b=torch.Tensor(range(720)).unsqueeze(1).repeat(1,720).unsqueeze(-1)/720.
     def reset(self):
         self.permutation = torch.randperm(self.max)
-        self.observations = self.albedo # self.dataset[:,:,self.permutation[0]] 
+        self.observations = -1 * torch.ones([self.HEIGHT*self.WIDTH,3,8])
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.float32)*1e-8 # 
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
         self.variance = self.observations**2
@@ -135,52 +135,33 @@ class PhysicSimulation:
             print(x)
             print(s)
             print(np.sum(s))
-        idxs = []
-        for i in range( min(self.CST,np.max(s))):
-          idxs.append(np.where(s>i)[0])
-        idx=idxs[0]
-        indexes = self.indexes[idx].unsqueeze(1)#.repeat(1,3)
-        self.observations[idx,:]=self.observations[idx,:]*indexes
-        self.variance[idx,:]=self.variance[idx,:]*indexes
-
-        temp = self.count
-        for x in idxs:
-            self.sample(x)
-        self.count=temp+self.CST
-        indexes = self.indexes[idx].unsqueeze(1) #.repeat(1,3)
-        self.observations[idx,:]=self.observations[idx,:]/indexes
-        self.variance[idx,:]=self.variance[idx,:]/indexes
+        self.observations = self.data.generate(self.dataset,s)
         self.updated=False
 
 
     def out(self,data):
-        return data.view(self.HEIGHT,self.WIDTH,*data.shape[1:])#.type(torch.float16)    
+        return data.view(self.HEIGHT,self.WIDTH,-1)#.type(torch.float16)    
 
     def render(self):        
-      if self.denoising:
-        if not self.updated:
-    #      b=time.time()
-          with FileLock('/home/ascardigli/RL_PATH_TRACING/tmp/0.pfm.lock'):
-            self.denoised= torch.Tensor(denoising.denoise(self.out(self.observations),str(0)))
-     #     print("lock included" + str(time.time()-b))
-          self.updated=True
-        return self.denoised
-      else:
-        return self.out(self.observations)
+      if not self.updated:
+        with torch.no_grad():
+          self.denoised= self.model(self.data.__getitem__(0,self.dataset.reshape(self.shape)))
+      self.updated=True
+      return self.denoised.reshape(3,-1).permute(1,0)
 
 
     def observe(self):
         a=self.render()
-        rendersquared = self.observations**2
+#        rendersquared = self.observations**2
         temp = torch.cat((
 self.out(self.observations),\
-self.out(self.indexes/torch.max(self.indexes)).unsqueeze(-1), \
-self.out((self.variance - rendersquared)),self.add, \
- norm((self.out(self.observations)-a),self.denoising), \
+#self.out(self.indexes/torch.max(self.indexes)), \
+#self.out((self.variance - rendersquared)),\
+self.out(self.add), \
+self.out(a), \
   self.a,self.b \
  ),axis=-1).permute(2,0,1)
-#        print(temp.dtype)
-        return temp#.type(torch.float16)
+        return temp, self.gd
 
 
 class Spec:
@@ -205,7 +186,9 @@ def MultiSSIM(a,b,gpu_id):
     d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0).cuda(gpu_id)
     e = torch.cat([c for c in b],0).cuda(gpu_id)
     loss=MS_SSIM(data_range=1,size_average=False).cuda(gpu_id)
-    return loss(d,e).cpu() 
+    print(d.shape)
+    print(e.shape)
+    return loss(d,e.unsqueeze(0)).cpu() 
 
 
 
@@ -224,7 +207,7 @@ class CustomEnv(gym.Env):
     self.sppps = env_config["sppps"]
     self.denoising = env_config['denoising']
     self.HEIGHT = 720 
-    self.WIDTH =   1280
+    self.WIDTH =   720
     self.partition = env_config["partition"]
     self.CST= 10
     self.max = int((self.spp)/self.sppps)  *self.CST  # #
@@ -233,21 +216,17 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
 
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH/L/L),))
-    self.observation_space = spaces.Box(low=-1e-2, high=1, shape=
-                    (int(self.HEIGHT/L),int(self.WIDTH/L),19), dtype=np.float32) #MACHINE PRECISION
-    denoising.initialise("/home/ascardigli/datasets/temple/")
-    self.ground_truth = get_truth("/home/ascardigli/datasets/temple/"+"truth.png",self.HEIGHT,self.WIDTH)
+    self.observation_space = spaces.Box(low=-1, high=1, shape=
+                    (int(self.HEIGHT/L),int(self.WIDTH/L),71), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
     self.counter= 0
     self.top=0
 
   def step(self, action):
     a,b,c,d=self.crop()
-    gd= self.ground_truth[:,:,a:b,c:d]
-    old = self.simulation.render()[a:b,c:d]
+#    gd= self.ground_truth[:,:,a:b,c:d]
+    old = self.simulation.out(self.simulation.render())
     i=-0 #works with 0 outside of tune.py TODO
-    old = MultiSSIM([old], [gd],i)[0]
-
     if L!=1:
         action=action.reshape(int(self.HEIGHT/L),int(self.WIDTH/L))
         x= np.zeros((int(self.HEIGHT/L),int(self.WIDTH/L)))
@@ -265,18 +244,13 @@ class CustomEnv(gym.Env):
             action = np.concatenate((x,action),0)
             action = np.concatenate((y,action),1)
         action = action.reshape(-1)
-    #if self.simulation.count==1:
-    #    print("on va la")
-    #    action=np.concatenate((np.ones(int(self.HEIGHT*self.WIDTH/2)),\
-#np.zeros(int(self.HEIGHT*self.WIDTH/2))),0)
-#    else:
-#        action=np.concatenate((np.zeros(int(self.HEIGHT*self.WIDTH/2)),\
-#      np.ones(int(self.HEIGHT*self.WIDTH/2))),0)
     
     self.simulation.simulate(action)
-    observation = self.simulation.observe()[:,a:b,c:d]
-    new = self.simulation.render()[a:b,c:d]
-    import ray
+    observation,gd = self.simulation.observe()
+    new = self.simulation.out(self.simulation.render())
+    print(old.shape)
+    print(gd.shape)
+    old = MultiSSIM([old], [gd],i)[0]
     new = MultiSSIM([new], [gd],i)[0]
     if  self.top<new:
         print(new)
@@ -312,7 +286,8 @@ class CustomEnv(gym.Env):
         self.counter=0
         self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
     a,b,c,d=self.crop()
-    return self.simulation.observe().numpy()[:,a:b,c:d].transpose(1,2,0)
+    temp ,_= self.simulation.observe()
+    return temp.numpy()[:,a:b,c:d].transpose(1,2,0)
     
   def render(self, mode='human', close=False):
     return self.simulation.render()

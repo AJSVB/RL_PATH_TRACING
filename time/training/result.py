@@ -4,7 +4,7 @@
 import os
 import torch
 
-from util import *
+from .util import *
 
 # Gets the path to the result directory
 def get_result_dir(cfg, result=None):
