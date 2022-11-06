@@ -112,12 +112,12 @@ def parse_args(cmd=None, description=None):
                         help='maximum learning rate')
 
   if cmd in {'train', 'find_lr'}:
-    parser.add_argument('--batch_size', '--bs', '-b', type=int, default=8*4,
+    parser.add_argument('--batch_size', '--bs', '-b', type=int, default=2,
                         help='mini-batch size (total batch size of all devices)')
-    parser.add_argument('--num_loaders', '--loaders', '-j', type=int, default=1,
+    parser.add_argument('--num_loaders', '--loaders', '-j', type=int, default=4,
                         help='number of data loader threads per device')
     parser.add_argument('--precision', '-p', type=str, choices=['fp32', 'mixed'],
-                        help='training precision', default = 'fp32')
+                        help='training precision')
     advanced.add_argument('--model', '-m', type=str, choices=['unet'], default='unet',
                           help='network model')
     advanced.add_argument('--loss', '-l', type=str,
@@ -181,7 +181,7 @@ def parse_args(cmd=None, description=None):
                         help='type of device(s) to use')
     parser.add_argument('--device_id', '-k', type=int, default=0,
                         help='ID of the first device to use')
-    parser.add_argument('--num_devices', '-n', type=int, default=4,
+    parser.add_argument('--num_devices', '-n', type=int, default=1,
                         help='number of devices to use (with IDs device_id .. device_id+num_devices-1)')
     advanced.add_argument('--deterministic', '--det', action='store_true',
                           default=(cmd in {'preprocess', 'infer', 'export'}),

@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-
-## Copyright 2018-2021 Intel Corporation
-## SPDX-License-Identifier: Apache-2.0
-
 import os
 import sys
 from glob import glob
@@ -124,7 +119,6 @@ def main_worker(rank, cfg):
       print('Validation images:', valid_data.num_images)
     valid_loader, valid_sampler = get_data_loader(rank, cfg, valid_data, shuffle=False)
     valid_steps_per_epoch = len(valid_loader)
-
   # Initialize the learning rate scheduler
   lr_scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
@@ -135,24 +129,21 @@ def main_worker(rank, cfg):
     div_factor=(25. if cfg.lr is None else cfg.max_lr / cfg.lr),
     final_div_factor=1e4,
     last_epoch=last_epoch-1)
-
   if lr_scheduler.last_epoch != last_epoch:
     error('failed to restore LR scheduler state')
 
   # Check whether AMP is enabled
-  amp_enabled = cfg.precision == 'mixed'
+  amp_enabled = False #cfg.precision == 'mixed'
 
   if amp_enabled:
     # Initialize the gradient scaler
     scaler = amp.GradScaler()
-
   # Initialize the summary writer
   log_dir = get_result_log_dir(result_dir)
   if rank == 0:
     summary_writer = SummaryWriter(log_dir)
     if step == 0:
       summary_writer.add_scalar('learning_rate', lr_scheduler.get_last_lr()[0], 0)
-
   # Training and evaluation loops
   if rank == 0:
     print()
@@ -180,7 +171,6 @@ def main_worker(rank, cfg):
       target = target.reshape(target.shape[0]*10,-1,*target.shape[2:])
 
 
-
       input  = input.to(device,  non_blocking=True)
       target = target.to(device, non_blocking=True)
       if not amp_enabled:
@@ -202,11 +192,69 @@ def main_worker(rank, cfg):
         loss.backward()
         optimizer.step()
 
+
+
+    import matplotlib.pyplot as plt
+    import random
+    import time
+    if random.random()<1e-2:
+        def f(t):
+         def h(t):
+            a= [a for a in t if a!=-1 ]
+            return sum(a)/len(a)
+         a=0
+         b=t[0]*0
+         for i in range(256): 
+           for j in range(256):
+             b[i][j]=h(t[:,i,j])
+         return b   
+
+        def g(t):
+         return 1-torch.nn.ReLU()(1-torch.nn.ReLU()(t))
+        t=time.time()
+        print(input.shape)
+        d=int(input.shape[1]/3)
+        a=f(input[0,0:8]).unsqueeze(0)
+        print(torch.max(a))
+        print(torch.min(a))
+        b=f(input[0,d:d+8]).unsqueeze(0)
+        c=f(input[0,2*d:2*d+8]).unsqueeze(0)
+        temp=torch.cat([a,b,c],0)
+        plt.imshow(g(temp.permute(1,2,0).detach().cpu()))
+        plt.savefig("images/"+str(t)+"in.png")
+        plt.clf()
+
+        print(torch.max(x[0]))
+        print(torch.min(x[0]))
+
+        plt.imshow(g(x[0].permute(1,2,0).detach().cpu()))
+        plt.savefig("images/"+str(t)+"out.png")
+        plt.clf()
+
+    import matplotlib.pyplot as plt
+    import random
+    for i in range(66):
+         plt.imshow(input[0,i].detach().cpu())
+         plt.savefig("images/"+str(i)+".png")
+         plt.clf()
+    plt.imshow(target[0].permute(1,2,0).detach().cpu())
+    plt.savefig("images/target.png")
+    plt.clf()
+    plt.imshow(output[0].permute(1,2,0).detach().cpu())
+    plt.savefig("images/out.png")
+
+
+
+
+
+
       # Next step
       step += 1
       train_loss += loss
       if rank == 0:
         progress.next()
+
+
 
     # Get and update the learning rate
     lr = lr_scheduler.get_last_lr()[0]
@@ -258,6 +306,10 @@ def main_worker(rank, cfg):
           if rank == 0:
             progress.next()
 
+
+
+
+
       # Compute the average validation loss
       if distributed:
         dist.all_reduce(valid_loss, op=dist.ReduceOp.SUM)
@@ -288,5 +340,3 @@ def main_worker(rank, cfg):
 
 if __name__ == '__main__':
   main()
-
-

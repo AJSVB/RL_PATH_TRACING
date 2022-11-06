@@ -51,17 +51,17 @@ import torchvision.transforms.functional as TF
 from functools import lru_cache
 
 
-@lru_cache(maxsize = None)
+#@lru_cache(maxsize = None)
 def get_ith_image(path,i,frame_number):
     image = Image.open(path+str(i).zfill(2) + "-" + str(frame_number).zfill(4)+'.png')
     #x = TF.to_tensor(image)
     #x.unsqueeze_(0)
-    return np.expand_dims(image,0)
+    return np.expand_dims(image,0)/256.
 
 def get_truth(path,frame_number):
     image= Image.open(path + "gd"+str(frame_number).zfill(4)+".png")
     #x = TF.to_tensor(image)
-    return np.array(image)
+    return np.array(image)/256.
 
 
 def get_add(a,b,c):
@@ -69,7 +69,14 @@ def get_add(a,b,c):
       b="00UVUV"
     image= Image.open(a+b+c)
    # x = TF.to_tensor(image)
-    return np.expand_dims(image,-1)
+    z= np.expand_dims(image,-1)
+    b=np.min(z)
+    a=np.max(z)
+    if b==a:
+      a = a if a else 1.
+      return z/a
+    else:
+      return (z-b)/(a-b)*1.
 
 
 def get_aux(path,frame_number):
@@ -132,15 +139,15 @@ class TrainingDataset(PreprocessedDataset):
     ox = randint(width  - sx + 1)
 
     target_image = get_truth(self.path,index)
+
     aux = get_aux(self.path,index)
+
     input_image=np.concatenate([input_image,aux],-1)
+
     color_order = randperm(3)
     input_image=input_image[:,:,color_order,:]
     target_image=target_image[:,:,color_order]
     
-
-    
-
 
     def f(input_image):
      a=np.concatenate([np.expand_dims(input_image[256*(i%2):256*(i%2+1),256*int(i/2):256*(int(i/2)+1)],-2) for i in range(10)],-2)
@@ -148,8 +155,8 @@ class TrainingDataset(PreprocessedDataset):
 
     input_image = f(input_image)
     target_image = f(target_image)
-
-
+#    input_image=input_image[:256,:256]
+#    target_image=target_image[:256,:256]
 
     # Randomly transform the tiles to improve training quality
     if rand() < 0.5:
