@@ -183,9 +183,12 @@ class CustomEnv(gym.Env):
     self.simulation.simulate(action)
     observation,gd = self.simulation.observe()
     new = self.simulation.out(self.simulation.render())
+    base = self.simulation.dataset[:,:,:4].mean(-1)
+    baseline = MultiSSIM([base],[gd],i)[0]
     old = MultiSSIM([old], [gd],i)[0]
     new = MultiSSIM([new], [gd],i)[0]
     if  self.top<new:
+        print(baseline)
         print(new)
         self.top = new
         if self.top>.9806:

@@ -182,7 +182,7 @@ def main_worker(rank, cfg):
 
       with amp.autocast(enabled=amp_enabled):
         output = model(input)
-        loss = criterion(output, target)
+        loss = criterion(output, target)*10 #TODO
 
       if amp_enabled:
         scaler.scale(loss).backward()
