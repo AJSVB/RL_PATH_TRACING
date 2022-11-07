@@ -16,62 +16,6 @@ from training import  train
 
 L=1
 
-def norm(a,denoising):
-    if not denoising:
-        return a*0
-    return (a-torch.min(a))/(torch.max(a)-torch.min(a))
-
-
-def ground_truth(path,number_images=10000,frame_number=1,HEIGHT=720,WIDTH=1280,name=""):
-    dataset = get_ith_image(path,0,frame_number,HEIGHT,WIDTH) 
-    for i in range(1,number_images):
-      dataset = (dataset*i + get_ith_image(path,i,frame_number,HEIGHT,WIDTH) )/(i+1.)
-    img= T.ToPILImage()(dataset.squeeze(0))
-    img.save(path+name)
-
-def get_truth(path,HEIGHT=480,WIDTH=640):
-    image= Image.open(path)
-    x = TF.to_tensor(image)
-    x.unsqueeze_(0)
-    return x[:,:,-HEIGHT:,-WIDTH:]#.type(torch.float16) #.mean(1).unsqueeze(1)
-
-
-def get_ith_image(path,i,frame_number = 1,HEIGHT=480,WIDTH=640):
-    image = Image.open(path+str(frame_number).zfill(4) + "-" + str(i).zfill(5)+'.png0001.png')
-    x = TF.to_tensor(image)
-    x.unsqueeze_(0)
-    return x[:,:,-HEIGHT:,-WIDTH:]#.type(torch.float16) #.mean(1).unsqueeze(1)
-
-def aggregate_by_pixel(path,number_images,frame_number = 1,HEIGHT=480,WIDTH=640):
-    dataset = torch.cat([get_ith_image(path,i,frame_number,HEIGHT,WIDTH) for i in range(number_images)],0)
-    dataset = dataset.permute([2,3,1,0])
-    return dataset
-
-def cached(list):
-    return torch.cat(list,0).permute([2,3,1,0])
-
-
-def get_add(path,detail):
-    image = Image.open(path+"~"+detail+'0004.png')
-    x = TF.to_tensor(image)
-    if x[0,:].equal(x[1,:]):
-        x = x[0:1,:]
-    return x #.mean(0).unsqueeze(0)#.type(torch.float16)
-
-def load_additional(path,frame_number=1,HEIGHT=480,WIDTH=640):
-    dataset = torch.cat([get_add(path,a) for a in  ["Normal","DiffCol","Mist"]])
-    dataset = dataset.permute([1,2,0])
-    return dataset[-HEIGHT:,-WIDTH:]
-
-
-def load_albedo(path,frame_number=1,HEIGHT=480,WIDTH=640):
-    dataset = get_add(path,"DiffCol")
-    dataset = dataset.permute([1,2,0])
-    return dataset[-HEIGHT:,-WIDTH:]
-
-
-
-
 
 class PhysicSimulation:
 
@@ -105,13 +49,6 @@ class PhysicSimulation:
         self.count = 0 #
         self.updated=False
     
-    def sample(self,idx):
-        indexes = self.indexes[idx] 
-        self.indexes[idx]= indexes+1
-        temp = self.dataset[idx,:,self.permutation[self.count]]
-        self.observations[idx,:] = self.observations[idx,:] +  temp  
-        self.variance[idx,:] = self.variance[idx,:] + temp**2 
-        self.count+=1
 
 
     def round_retain_sum(self,x):
@@ -186,8 +123,6 @@ def MultiSSIM(a,b,gpu_id):
     d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0).cuda(gpu_id)
     e = torch.cat([c for c in b],0).cuda(gpu_id)
     loss=MS_SSIM(data_range=1,size_average=False).cuda(gpu_id)
-    print(d.shape)
-    print(e.shape)
     return loss(d,e.unsqueeze(0)).cpu() 
 
 
@@ -248,8 +183,6 @@ class CustomEnv(gym.Env):
     self.simulation.simulate(action)
     observation,gd = self.simulation.observe()
     new = self.simulation.out(self.simulation.render())
-    print(old.shape)
-    print(gd.shape)
     old = MultiSSIM([old], [gd],i)[0]
     new = MultiSSIM([new], [gd],i)[0]
     if  self.top<new:

@@ -167,8 +167,8 @@ def main_worker(rank, cfg):
       # Get the batch
       input, target = batch
 
-      input = input.reshape(input.shape[0]*10,-1,*input.shape[2:])
-      target = target.reshape(target.shape[0]*10,-1,*target.shape[2:])
+#      input = input.reshape(input.shape[0]*10,-1,*input.shape[2:])
+#      target = target.reshape(target.shape[0]*10,-1,*target.shape[2:])
 
 
       input  = input.to(device,  non_blocking=True)
@@ -194,7 +194,7 @@ def main_worker(rank, cfg):
 
       import matplotlib.pyplot as plt
       import random
-      if random.random()<1e-3:
+      if random.random()<1e-2:
        for i in range(66):
           plt.imshow(input[0,i].detach().cpu())
           plt.savefig("images/"+str(i)+".png")

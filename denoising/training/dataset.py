@@ -153,10 +153,10 @@ class TrainingDataset(PreprocessedDataset):
      a=np.concatenate([np.expand_dims(input_image[256*(i%2):256*(i%2+1),256*int(i/2):256*(int(i/2)+1)],-2) for i in range(10)],-2)
      return a
 
-    input_image = f(input_image)
-    target_image = f(target_image)
-#    input_image=input_image[:256,:256]
-#    target_image=target_image[:256,:256]
+#    input_image = f(input_image)
+#    target_image = f(target_image)
+    input_image=input_image[:720,:720]
+    target_image=target_image[:720,:720]
 
     # Randomly transform the tiles to improve training quality
     if rand() < 0.5:
@@ -223,17 +223,7 @@ class ValidationDataset(PreprocessedDataset):
   def __getitem__(self,index):
     # Get the tile
  #   sample_index, oy, ox, input_channel_indices = self.tiles[index]
-    sy = sx = self.tile_size
-    height = 720
-    width  = 1280
-    oy = randint(height - sy + 1)
-    ox = randint(width  - sx + 1)
-
-
-
     index=index+1000
-    sy = sx = self.tile_size
-
     input_name = "-"+str(index).zfill(4)+".png"
     target_name = "gd"+str(index).zfill(4)+".png"
     samples = self.sample(index) 
@@ -245,8 +235,8 @@ class ValidationDataset(PreprocessedDataset):
     input_image=np.concatenate([input_image,aux],-1)
     input_image=input_image.reshape(*input_image.shape[:2],-1)
 
-    input_image  = input_image [oy:oy+sy, ox:ox+sx]
-    target_image = target_image[oy:oy+sy, ox:ox+sx]
+    input_image  = input_image [:720,:720]
+    target_image = target_image[:720,:720]
 
 
 
