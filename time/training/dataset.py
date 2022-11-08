@@ -26,23 +26,28 @@ class PreprocessedDataset(Dataset):
 ## -----------------------------------------------------------------------------
 from PIL import Image
 import torchvision.transforms.functional as TF
+
+
+import functools
+@functools.cache
 def get_ith_image(path,i,frame_number):
     image = Image.open(path+str(i).zfill(2) + "-" + str(frame_number).zfill(4)+'.png')
     #x = TF.to_tensor(image)
     #x.unsqueeze_(0)
-    return np.expand_dims(image,0)/255.
+    return np.expand_dims(image,0)[:,:720,:720]/255.
 
+
+@functools.cache
 def get_truth(path,frame_number):
     image= Image.open(path + "gd"+str(frame_number).zfill(4)+".png")
     #x = TF.to_tensor(image)
     return np.array(image)/255.
 
-
+@functools.cache
 def get_add(a,b,c):
     if b=="UVUV":
       b="00UVUV"
     image= Image.open(a+b+c)
-   # x = TF.to_tensor(image)
     z= np.expand_dims(image,-1)
     b=np.min(z)
     a=np.max(z)
@@ -99,8 +104,8 @@ class ValidationDataset(PreprocessedDataset):
     sampling = np.repeat(sampling,3,axis=3) 
     sampling = sampling - idxs
     sampling[sampling<0] = 8
-    return torch.Tensor(np.take_along_axis(samples,sampling,0))
-
+    temp = torch.Tensor(np.take_along_axis(samples,sampling,0))
+    return temp
   def get(self, index):
     sy = sx = self.tile_size
 
@@ -116,15 +121,13 @@ class ValidationDataset(PreprocessedDataset):
 
 
   def __getitem__(self, index,samples=None):
-    sy = sx = self.tile_size
-    input_name = "-"+str(index).zfill(4)+".png"
-    target_name = "gd"+str(index).zfill(4)+".png"
+    a=time.time()
     if samples is None:  
       sample = self.sample(index) 
     input_image=samples
     aux = get_aux(self.path,index)[:720,:720]
     input_image=np.concatenate([input_image,aux],-1)
     input_image=input_image.reshape(*input_image.shape[:2],-1)
-
     input_image  = input_image [:720,:720]
-    return image_to_tensor(input_image.copy()).unsqueeze(0).float()
+    temp= image_to_tensor(input_image.copy()).unsqueeze(0).float()
+    return temp

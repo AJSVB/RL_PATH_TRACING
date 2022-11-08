@@ -87,7 +87,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 'num_cpus_per_worker':6,
 'num_gpus_per_worker':.5,
 #"evaluation_interval":10,
-"rollout_fragment_length":1, #was2
+"rollout_fragment_length":2, 
   "model":{
    "custom_model":"UN",
 "conv_filters":[[16, [c, c], 1],[16, [c, c], 1],[2, [c, c], 1], [1, [c, c], 1]],

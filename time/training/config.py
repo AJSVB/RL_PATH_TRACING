@@ -93,7 +93,7 @@ def parse_args(cmd=None, description=None):
 
   if cmd in {'train', 'infer', 'export'}:
     parser.add_argument('--num_epochs', '--epochs', '-e', type=int,
-                        default=(2000 if cmd == 'train' else None),
+                        default=(200 if cmd == 'train' else None),
                         help='number of training epochs')
 
   if cmd in {'train'}:

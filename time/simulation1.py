@@ -19,14 +19,16 @@ L=1
 
 class PhysicSimulation:
 
-    def __init__(self,path,spp,frame_number=1, sppps=.1,HEIGHT=480,WIDTH=730,max=10,denoising=True,partition=None,CST=1):
+    def __init__(self,path,spp,frame_number=1, sppps=.1,HEIGHT=480,WIDTH=730,max=10,denoising=True,partition=None,CST=1,sel=None):
 
-        self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
+        self.model,self.data,self.criterion,self.optimizer,self.scheduler = \
+sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.dataset = np.transpose(self.data.data(0),(1,2,3,0))[:720,:720]
         self.partition = partition
         self.add, self.gd = self.data.get(0)
         self.add = self.add.permute(1,2,0).unsqueeze(-1).to(dtype=torch.float32)
         self.gd=self.gd.to(dtype=torch.float32)
+        self.gd = self.gd.cuda(0)
         self.CST=CST
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
@@ -81,13 +83,13 @@ class PhysicSimulation:
       if not self.updated:
           self.optimizer.zero_grad()
           input = self.data.__getitem__(0,self.dataset.reshape(self.shape))
-          print("input"+str(input.isnan().any()))
-          self.denoised= self.model(input)
-          print(self.denoised.isnan().any())
+          self.denoised= self.model(input.cuda(0))
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0))
           loss.backward()
+
           self.optimizer.step()
           self.scheduler.step()
+          self.denoised = 1-torch.nn.ReLU()(1-torch.nn.ReLU()(self.denoised.detach())).cpu().reshape(3,-1).permute(1,0)
           import matplotlib.pyplot as plt
           import random
           if random.random()<1e-3:
@@ -101,9 +103,8 @@ class PhysicSimulation:
            plt.clf()
            plt.imshow(self.denoised.permute(1,2,0).detach().cpu())
            plt.savefig("images/out.png")
-
       self.updated=True
-      return 1-torch.nn.ReLU()(1-torch.nn.ReLU()(self.denoised.detach())).reshape(3,-1).permute(1,0)
+      return self.denoised
 
 
     def observe(self):
@@ -167,7 +168,11 @@ class CustomEnv(gym.Env):
     self.max = int((self.spp)/self.sppps)  *self.CST  # #
     self.id = env_config.vector_index
 
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
+
+    self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
+    self.model=self.model.to("cuda:0")
+    self.criterion = self.criterion.to("cuda:0")
+    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST,self)
 
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH/L/L),))
     self.observation_space = spaces.Box(low=-1, high=1, shape=
@@ -176,7 +181,11 @@ class CustomEnv(gym.Env):
     self.counter= 0
     self.top=0
 
+
+
+
   def step(self, action):
+    ta=time.time()
     a,b,c,d=self.crop()
 #    gd= self.ground_truth[:,:,a:b,c:d]
     old = self.simulation.out(self.simulation.render())
@@ -240,7 +249,7 @@ class CustomEnv(gym.Env):
     self.counter+=4
     if self.counter==4:
         self.counter=0
-        self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST)
+        self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST,self)
     a,b,c,d=self.crop()
     temp ,_= self.simulation.observe()
     return temp.numpy()[:,a:b,c:d].transpose(1,2,0)
