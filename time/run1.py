@@ -81,7 +81,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 "normalize_actions":False,
 "train_batch_size":4, #Was 128
 "num_envs_per_worker":1,
-        'num_workers':2, #8, TODO
+        'num_workers':1, #8, TODO
 #"",
 #"evaluation_num_workers":1,
 'num_cpus_per_worker':6,

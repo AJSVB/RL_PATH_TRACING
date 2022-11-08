@@ -26,24 +26,29 @@ class PhysicSimulation:
         self.model,self.data,self.criterion,self.optimizer,self.scheduler = \
 sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.dataset = np.transpose(self.data.data(0),(1,2,3,0))[:720,:720]
-        self.add, self.gd = self.data.get(0)
-        self.add = self.add.permute(1,2,0).unsqueeze(-1).to(dtype=torch.float32)
-        self.gd=self.gd.to(dtype=torch.float32)
-        self.gd = self.gd.cuda(0)
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.sppps = sppps
-        self.shape=self.dataset.shape
-        self.dataset=self.dataset.reshape( -1,*self.dataset.shape[2:])
         self.reset()
         self.a=torch.Tensor(range(720)).unsqueeze(0).repeat(720,1).unsqueeze(-1)/720.
         self.b=torch.Tensor(range(720)).unsqueeze(1).repeat(1,720).unsqueeze(-1)/720.
+        self.shape=self.dataset.shape
+
+
     def reset(self):
         self.observations = -1 * torch.ones([self.HEIGHT*self.WIDTH,3,8])
         self.s = torch.ones([self.HEIGHT, self.WIDTH,1], dtype = torch.float32)*1e-8 # 
         self.updated=False
         self.count=0
         self.loss=0
+        self.new(self.count)
+
+    def new(self,i):
+        self.dataset = np.transpose(self.data.data(i),(1,2,3,0))[:720,:720]
+        self.add, self.gd = self.data.get(i)
+        self.add = self.add.permute(1,2,0).unsqueeze(-1).to(dtype=torch.float32)
+        self.gd=self.gd.to(dtype=torch.float32)
+        self.gd = self.gd.cuda(0)
 
     def round_retain_sum(self,x):
      N = np.round(np.sum(x)).astype(int)
@@ -69,17 +74,16 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
             print(np.sum(s))
         s[s<0]=0
         s[s>7] = 7
-        self.observations = self.data.generate(self.dataset,s)
+        self.observations = self.data.generate(self.dataset,s,self.observations,self.count)
         self.updated=False
         self.s = self.out(torch.Tensor(s/7.))
-
     def out(self,data):
         return data.view(self.HEIGHT,self.WIDTH,-1)#.type(torch.float16)    
 
     def render(self):        
       if not self.updated:
           self.optimizer.zero_grad()
-          input = self.data.__getitem__(0,self.dataset.reshape(self.shape))
+          input = self.data.__getitem__(self.count,self.observations.reshape(self.shape))
           self.denoised= self.model(input.cuda(0))
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0))
           loss.backward()
@@ -99,7 +103,6 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
            plt.savefig("images/out.png")
           self.loss= loss.detach().cpu()
           self.denoised = self.denoised.reshape(3,-1).permute(1,0)
-
       self.updated=True
       return self.denoised
 
@@ -157,7 +160,7 @@ class CustomEnv(gym.Env):
     self.sppps = env_config["sppps"]
     self.HEIGHT = 720 
     self.WIDTH =   720
-    self.max = int((self.spp)/self.sppps)  
+    self.max = int((self.spp)/self.sppps)  *1400
     self.id = env_config.vector_index
     self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
     self.model=self.model.to("cuda:0")
@@ -165,7 +168,7 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH/L/L),))
     self.observation_space = spaces.Box(low=-1, high=1, shape=
-                    (int(self.HEIGHT/L),int(self.WIDTH/L),56), dtype=np.float32) #MACHINE PRECISION
+                    (int(self.HEIGHT/L),int(self.WIDTH/L),72), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
     self.top=0
 
@@ -173,6 +176,7 @@ class CustomEnv(gym.Env):
 
 
   def step(self, action):
+    self.simulation.new(self.simulation.count)
     old = self.simulation.out(self.simulation.render())
     i=-0 #works with 0 outside of tune.py TODO
     self.simulation.simulate(action)
@@ -190,6 +194,7 @@ class CustomEnv(gym.Env):
         print()
         self.top = new
         if self.top>.9:
+         save(base,"images/baseline.png")
          self.insight()
     reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count
@@ -198,10 +203,11 @@ class CustomEnv(gym.Env):
   def insight(self): 
     img= self.simulation.s
     te=str(self.top.item())
-    save(img,"/home/ascardigli/RL_PATH_TRACING/tmp/"+te+".png")
+    save(img,"images/"+te+".png")
   def reset(self):
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     temp ,_= self.simulation.observe()
+    print("rest")
     return temp.numpy().transpose(1,2,0)
     
 def save(data,name):
