@@ -21,8 +21,7 @@ class PhysicSimulation:
 
     def __init__(self,path,spp,frame_number=1, sppps=.1,HEIGHT=480,WIDTH=730,max=10,denoising=True,partition=None,CST=1):
 
-        self.model,self.data = train.main_worker()
-        self.model.eval()
+        self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
         self.dataset = np.transpose(self.data.data(0),(1,2,3,0))[:720,:720]
         self.partition = partition
         self.add, self.gd = self.data.get(0)
@@ -75,16 +74,36 @@ class PhysicSimulation:
         self.observations = self.data.generate(self.dataset,s)
         self.updated=False
 
-
     def out(self,data):
         return data.view(self.HEIGHT,self.WIDTH,-1)#.type(torch.float16)    
 
     def render(self):        
       if not self.updated:
-        with torch.no_grad():
-          self.denoised= self.model(self.data.__getitem__(0,self.dataset.reshape(self.shape)))
+          self.optimizer.zero_grad()
+          input = self.data.__getitem__(0,self.dataset.reshape(self.shape))
+          print("input"+str(input.isnan().any()))
+          self.denoised= self.model(input)
+          print(self.denoised.isnan().any())
+          loss = self.criterion(self.denoised, self.gd.unsqueeze(0))
+          loss.backward()
+          self.optimizer.step()
+          self.scheduler.step()
+          import matplotlib.pyplot as plt
+          import random
+          if random.random()<1e-3:
+           print(loss)
+           for i in range(66):
+            plt.imshow(input[i].detach().cpu())
+            plt.savefig("images/"+str(i)+".png")
+            plt.clf()
+           plt.imshow(self.gd.permute(1,2,0).detach().cpu())
+           plt.savefig("images/target.png")
+           plt.clf()
+           plt.imshow(self.denoised.permute(1,2,0).detach().cpu())
+           plt.savefig("images/out.png")
+
       self.updated=True
-      return self.denoised.reshape(3,-1).permute(1,0)
+      return 1-torch.nn.ReLU()(1-torch.nn.ReLU()(self.denoised.detach())).reshape(3,-1).permute(1,0)
 
 
     def observe(self):
@@ -184,6 +203,7 @@ class CustomEnv(gym.Env):
     observation,gd = self.simulation.observe()
     new = self.simulation.out(self.simulation.render())
     base = self.simulation.dataset[:,:,:4].mean(-1)
+    base = torch.Tensor(base).reshape(self.HEIGHT,self.WIDTH,3)
     baseline = MultiSSIM([base],[gd],i)[0]
     old = MultiSSIM([old], [gd],i)[0]
     new = MultiSSIM([new], [gd],i)[0]

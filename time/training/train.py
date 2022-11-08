@@ -33,18 +33,22 @@ def main_worker():
   result_dir = get_result_dir(cfg)
   resume = os.path.isdir(result_dir)
 
-  if resume:
-    result_cfg = load_config(result_dir)
-    last_epoch = get_latest_checkpoint_epoch(result_dir)
-    checkpoint = load_checkpoint(result_dir, device, last_epoch, model, optimizer)
-    step = checkpoint['step']
+  lr_scheduler = optim.lr_scheduler.OneCycleLR(
+    optimizer,
+    max_lr=cfg.max_lr,
+    total_steps=cfg.num_epochs*1000,
+    pct_start=cfg.lr_warmup,
+    anneal_strategy='cos',
+    div_factor=(25. if cfg.lr is None else cfg.max_lr / cfg.lr),
+    final_div_factor=1e4,
+    last_epoch=-1)
 
   # Initialize the validation dataset
   valid_data = ValidationDataset(cfg, cfg.valid_data)
   valid_steps_per_epoch = len(valid_data)
   progress_format = '%-5s %' + str(len(str(cfg.num_epochs))) + 'd/%d:' % cfg.num_epochs
   total_start_time = time.time()
-  return model,valid_data
+  return model,valid_data,criterion,optimizer,lr_scheduler
   for epoch in range(0,1):
 
     if True:

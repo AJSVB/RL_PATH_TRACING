@@ -131,38 +131,4 @@ class UNet(nn.Module):
 
     x = self.dec_conv0(x)            # dec_conv0
 
-
-    import matplotlib.pyplot as plt
-    import random
-    import time
-    if random.random()<1e-3:
-        def f(t):
-         a=0
-         b=t[0]*0
-         for i in range(8):
-          if t[i][0][0].item()!=-1:
-           b+=t[i]
-           a+=1
-         if a==0:
-          a=1
-         return b/a 
-        t=time.time()
-        print(input.shape)
-        d=int(input.shape[1]/3)
-        a=f(input[0,0:8]).unsqueeze(0)
-        print(torch.max(a))
-        print(torch.min(a))
-        b=f(input[0,d:d+8]).unsqueeze(0)
-        c=f(input[0,2*d:2*d+8]).unsqueeze(0)
-        temp=torch.cat([a,b,c],0)
-        plt.imshow(temp.permute(1,2,0).detach().cpu())
-        plt.savefig("images/"+str(t)+"denoised.png")
-        plt.clf()
-
-        print(torch.max(x[0]))
-        print(torch.min(x[0]))
-
-        plt.imshow(x[0].permute(1,2,0).detach().cpu())
-        plt.savefig("images/"+str(t)+".png")
-        plt.clf()
     return x
