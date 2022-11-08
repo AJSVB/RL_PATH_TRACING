@@ -189,18 +189,16 @@ class CustomEnv(gym.Env):
         print("denoiser "+str(self.simulation.loss.item()))
         print()
         self.top = new
-        if self.top>.9806:
+        if self.top>.9:
          self.insight()
     reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count
     return observation.numpy().transpose(1,2,0),reward.detach().numpy(),done,{}
 
   def insight(self): 
-    img= self.simulation.indexes.unsqueeze(-1)
-    norm = (img-torch.min(img))/(torch.max(img) - torch.min(img))
+    img= self.simulation.s
     te=str(self.top.item())
-    save(self.simulation.out(norm),"/home/ascardigli/RL_PATH_TRACING/tmp/"+te+".png")
-
+    save(img,"/home/ascardigli/RL_PATH_TRACING/tmp/"+te+".png")
   def reset(self):
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     temp ,_= self.simulation.observe()
