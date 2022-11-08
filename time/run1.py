@@ -99,21 +99,16 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 }
 })
     # Train for one iteration.
+    from ray.air import session
     for _ in range(1000):
-         a = algo.train()['episode_reward_max']
-    print(time.time()-a)
+         a = algo.train()
     # Save state of the trained Algorithm in a checkpoint.
    # algo.save("/tmp/rllib_checkpoint")
    # return "/tmp/rllib_checkpoint/checkpoint_000001/checkpoint-1"
-    print(spp)
-    print(c)
-    print(sppps)
-    print(a)
 
 #simulation.ground_truth("../datasets/temple/",name="truth.png")
 if __name__ == "__main__":
  import sys
  te = sys.argv[-3:]
  spp,c,sppps =  te
- print(te)
  train_ppo_model(spp,c,sppps)

@@ -40,11 +40,10 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.b=torch.Tensor(range(720)).unsqueeze(1).repeat(1,720).unsqueeze(-1)/720.
     def reset(self):
         self.observations = -1 * torch.ones([self.HEIGHT*self.WIDTH,3,8])
-        self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.float32)*1e-8 # 
-        self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
+        self.s = torch.ones([self.HEIGHT, self.WIDTH,1], dtype = torch.float32)*1e-8 # 
         self.updated=False
         self.count=0
-
+        self.loss=0
 
     def round_retain_sum(self,x):
      N = np.round(np.sum(x)).astype(int)
@@ -68,8 +67,11 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
             print(x)
             print(s)
             print(np.sum(s))
+        s[s<0]=0
+        s[s>7] = 7
         self.observations = self.data.generate(self.dataset,s)
         self.updated=False
+        self.s = self.out(torch.Tensor(s/7.))
 
     def out(self,data):
         return data.view(self.HEIGHT,self.WIDTH,-1)#.type(torch.float16)    
@@ -81,14 +83,12 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           self.denoised= self.model(input.cuda(0))
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0))
           loss.backward()
-
           self.optimizer.step()
           self.scheduler.step()
-          self.denoised = 1-torch.nn.ReLU()(1-torch.nn.ReLU()(self.denoised.detach())).cpu().reshape(3,-1).permute(1,0)
+          self.denoised = 1-torch.nn.ReLU()(1-torch.nn.ReLU()(self.denoised.detach())).cpu()
           if random.random()<1e-3:
-           print(loss)
            input=input[0].detach().cpu()
-           for i in range(66):
+           for i in range(len(input)):
             plt.imshow(input[i])
             plt.savefig("images/"+str(i)+".png")
             plt.clf()
@@ -97,6 +97,9 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
            plt.clf()
            plt.imshow(self.denoised[0].permute(1,2,0).detach().cpu())
            plt.savefig("images/out.png")
+          self.loss= loss.detach().cpu()
+          self.denoised = self.denoised.reshape(3,-1).permute(1,0)
+
       self.updated=True
       return self.denoised
 
@@ -110,7 +113,7 @@ self.out(self.observations),\
 #self.out((self.variance - rendersquared)),\
 self.out(self.add), \
 self.out(a), \
-  self.a,self.b \
+  self.a,self.b,self.s \
  ),axis=-1).permute(2,0,1)
         return temp, self.gd
 
@@ -162,7 +165,7 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH/L/L),))
     self.observation_space = spaces.Box(low=-1, high=1, shape=
-                    (int(self.HEIGHT/L),int(self.WIDTH/L),71), dtype=np.float32) #MACHINE PRECISION
+                    (int(self.HEIGHT/L),int(self.WIDTH/L),56), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
     self.top=0
 
@@ -180,15 +183,17 @@ class CustomEnv(gym.Env):
     baseline = MultiSSIM([base],[gd],i)[0]
     old = MultiSSIM([old], [gd],i)[0]
     new = MultiSSIM([new], [gd],i)[0]
-    if  self.top<new:
-        print(baseline)
-        print(new)
+    if  self.top<new and random.random()<.01:
+        print("baseline " + str(baseline.item()))
+        print("new "+str(new.item()))
+        print("denoiser "+str(self.simulation.loss.item()))
+        print()
         self.top = new
         if self.top>.9806:
          self.insight()
     reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count
-    return observation.numpy().transpose(1,2,0),reward.detach().numpy(),done, {}
+    return observation.numpy().transpose(1,2,0),reward.detach().numpy(),done,{}
 
   def insight(self): 
     img= self.simulation.indexes.unsqueeze(-1)

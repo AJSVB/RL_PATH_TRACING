@@ -41,14 +41,17 @@ def get_ith_image(path,i,frame_number):
 def get_truth(path,frame_number):
     image= Image.open(path + "gd"+str(frame_number).zfill(4)+".png")
     #x = TF.to_tensor(image)
-    return np.array(image)/255.
+    return np.array(image)[:720,:720]/255.
 
 @functools.cache
 def get_add(a,b,c):
     if b=="UVUV":
       b="00UVUV"
     image= Image.open(a+b+c)
-    z= np.expand_dims(image,-1)
+    z= np.array(image)[:720,:720]
+    temp = [np.sum(z[:,:,i]) for i in range(3)]
+    if not (temp-temp[0]).any():
+      z = z[:,:,0:1]
     b=np.min(z)
     a=np.max(z)
     if b==a:
@@ -56,7 +59,6 @@ def get_add(a,b,c):
       return z/a
     else:
       return (z-b)/(a-b)*1.
-    return np.expand_dims(image,-1)
 
 
 def get_aux(path,frame_number):
@@ -96,8 +98,6 @@ class ValidationDataset(PreprocessedDataset):
     samples = np.transpose(samples.reshape(720,720,3,8),(3,0,1,2))
     samples = np.concatenate([samples,np.ones((1,720,720,3))*-1],0)
     idxs=np.repeat(idxs.reshape(720,720,1),3,axis=-1)
-    idxs[idxs<0]=0
-    idxs[idxs>7] = 7
     sampling = np.arange(8).reshape(8,1,1,1)
     sampling = np.repeat(sampling,720,axis=1)
     sampling = np.repeat(sampling,720,axis=2) 
@@ -125,7 +125,8 @@ class ValidationDataset(PreprocessedDataset):
     if samples is None:  
       sample = self.sample(index) 
     input_image=samples
-    aux = get_aux(self.path,index)[:720,:720]
+    aux = get_aux(self.path,index)
+    input_image=input_image.reshape(*input_image.shape[:2],-1)
     input_image=np.concatenate([input_image,aux],-1)
     input_image=input_image.reshape(*input_image.shape[:2],-1)
     input_image  = input_image [:720,:720]
