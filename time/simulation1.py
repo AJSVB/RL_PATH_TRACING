@@ -13,43 +13,37 @@ import unet1
 from filelock import FileLock 
 import os
 from training import  train
+import matplotlib.pyplot as plt
+import random
 
 L=1
 
 
 class PhysicSimulation:
 
-    def __init__(self,path,spp,frame_number=1, sppps=.1,HEIGHT=480,WIDTH=730,max=10,denoising=True,partition=None,CST=1,sel=None):
+    def __init__(self,spp, sppps=.1,HEIGHT=480,WIDTH=730,sel=None):
 
         self.model,self.data,self.criterion,self.optimizer,self.scheduler = \
 sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.dataset = np.transpose(self.data.data(0),(1,2,3,0))[:720,:720]
-        self.partition = partition
         self.add, self.gd = self.data.get(0)
         self.add = self.add.permute(1,2,0).unsqueeze(-1).to(dtype=torch.float32)
         self.gd=self.gd.to(dtype=torch.float32)
         self.gd = self.gd.cuda(0)
-        self.CST=CST
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.sppps = sppps
         self.shape=self.dataset.shape
         self.dataset=self.dataset.reshape( -1,*self.dataset.shape[2:])
-        self.max = max
         self.reset()
-        self.updated=False
-        self.denoising=denoising
         self.a=torch.Tensor(range(720)).unsqueeze(0).repeat(720,1).unsqueeze(-1)/720.
         self.b=torch.Tensor(range(720)).unsqueeze(1).repeat(1,720).unsqueeze(-1)/720.
     def reset(self):
-        self.permutation = torch.randperm(self.max)
         self.observations = -1 * torch.ones([self.HEIGHT*self.WIDTH,3,8])
         self.indexes = torch.ones([self.HEIGHT, self.WIDTH], dtype = torch.float32)*1e-8 # 
         self.indexes=self.indexes.view( -1, *self.indexes.shape[2:])
-        self.variance = self.observations**2
-        self.count = 0 #
         self.updated=False
-    
+        self.count=0
 
 
     def round_retain_sum(self,x):
@@ -69,6 +63,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         x=x.flatten().astype(np.float64)
         x=x*self.sppps*self.WIDTH*self.HEIGHT/L/L/sum(x)
         s=np.array(self.round_retain_sum(x))
+        self.count+=1
         if random.random()>.99:
             print(x)
             print(s)
@@ -90,18 +85,17 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           self.optimizer.step()
           self.scheduler.step()
           self.denoised = 1-torch.nn.ReLU()(1-torch.nn.ReLU()(self.denoised.detach())).cpu().reshape(3,-1).permute(1,0)
-          import matplotlib.pyplot as plt
-          import random
           if random.random()<1e-3:
            print(loss)
+           input=input[0].detach().cpu()
            for i in range(66):
-            plt.imshow(input[i].detach().cpu())
+            plt.imshow(input[i])
             plt.savefig("images/"+str(i)+".png")
             plt.clf()
            plt.imshow(self.gd.permute(1,2,0).detach().cpu())
            plt.savefig("images/target.png")
            plt.clf()
-           plt.imshow(self.denoised.permute(1,2,0).detach().cpu())
+           plt.imshow(self.denoised[0].permute(1,2,0).detach().cpu())
            plt.savefig("images/out.png")
       self.updated=True
       return self.denoised
@@ -156,58 +150,28 @@ class CustomEnv(gym.Env):
   metadata = {'render.modes': ['human']}
   def __init__(self, env_config):
     super(CustomEnv, self).__init__()
-    self.path = env_config["path"]
-    self.frame_number = env_config["frame_number"]
     self.spp = env_config['spp']
     self.sppps = env_config["sppps"]
-    self.denoising = env_config['denoising']
     self.HEIGHT = 720 
     self.WIDTH =   720
-    self.partition = env_config["partition"]
-    self.CST= 10
-    self.max = int((self.spp)/self.sppps)  *self.CST  # #
+    self.max = int((self.spp)/self.sppps)  
     self.id = env_config.vector_index
-
-
     self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
     self.model=self.model.to("cuda:0")
     self.criterion = self.criterion.to("cuda:0")
-    self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST,self)
-
+    self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH/L/L),))
     self.observation_space = spaces.Box(low=-1, high=1, shape=
                     (int(self.HEIGHT/L),int(self.WIDTH/L),71), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
-    self.counter= 0
     self.top=0
 
 
 
 
   def step(self, action):
-    ta=time.time()
-    a,b,c,d=self.crop()
-#    gd= self.ground_truth[:,:,a:b,c:d]
     old = self.simulation.out(self.simulation.render())
     i=-0 #works with 0 outside of tune.py TODO
-    if L!=1:
-        action=action.reshape(int(self.HEIGHT/L),int(self.WIDTH/L))
-        x= np.zeros((int(self.HEIGHT/L),int(self.WIDTH/L)))
-        y= np.concatenate((x,x),0)
-        if self.counter==0:
-            action = np.concatenate((action,x),0)
-            action = np.concatenate((action,y),1)
-        if self.counter==1:
-            action = np.concatenate((x,action),0)
-            action = np.concatenate((action,y),1)
-        if self.counter==2:
-            action = np.concatenate((action,x),0)
-            action = np.concatenate((y,action),1)
-        if self.counter==3:
-            action = np.concatenate((x,action),0)
-            action = np.concatenate((y,action),1)
-        action = action.reshape(-1)
-    
     self.simulation.simulate(action)
     observation,gd = self.simulation.observe()
     new = self.simulation.out(self.simulation.render())
@@ -232,31 +196,11 @@ class CustomEnv(gym.Env):
     te=str(self.top.item())
     save(self.simulation.out(norm),"/home/ascardigli/RL_PATH_TRACING/tmp/"+te+".png")
 
-
-  def crop(self):
-    if L==1:
-        return 0,self.HEIGHT,0,self.WIDTH
-    counter=self.counter
-    a=int(self.HEIGHT/L)
-    b=int(self.WIDTH/L)
-    i=(counter%2)==1
-    j=counter>1
-    return a*i,a*(i+1),b*j,b*(j+1)
-    print(x.shape)
-    return x[:,a*i:a*(i+1),b*j:b*(j+1)]
-    
   def reset(self):
-    self.counter+=4
-    if self.counter==4:
-        self.counter=0
-        self.simulation = PhysicSimulation(self.path,self.spp,self.frame_number,self.sppps,self.HEIGHT,self.WIDTH,self.max,self.denoising,self.partition,self.CST,self)
-    a,b,c,d=self.crop()
+    self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     temp ,_= self.simulation.observe()
-    return temp.numpy()[:,a:b,c:d].transpose(1,2,0)
+    return temp.numpy().transpose(1,2,0)
     
-  def render(self, mode='human', close=False):
-    return self.simulation.render()
-
 def save(data,name):
     img= T.ToPILImage()(data.permute([2,0,1]).type(torch.float32))
     img.save(name)

@@ -49,7 +49,6 @@ def parse_args(cmd=None, description=None):
   if cmd is None:
     cmd, _ = os.path.splitext(os.path.basename(sys.argv[0]))
   cmd = "train"
-  print(cmd)
   parser = argparse.ArgumentParser(description=description)
   parser.usage = '\rIntel(R) Open Image Denoise - Training\n' + parser.format_usage()
   advanced = parser.add_argument_group('optional advanced arguments')
@@ -93,7 +92,7 @@ def parse_args(cmd=None, description=None):
 
   if cmd in {'train', 'infer', 'export'}:
     parser.add_argument('--num_epochs', '--epochs', '-e', type=int,
-                        default=(200 if cmd == 'train' else None),
+                        default=(10 if cmd == 'train' else None),
                         help='number of training epochs')
 
   if cmd in {'train'}:
