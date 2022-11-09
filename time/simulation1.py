@@ -25,7 +25,6 @@ class PhysicSimulation:
 
         self.model,self.data,self.criterion,self.optimizer,self.scheduler = \
 sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
-        self.dataset = np.transpose(self.data.data(0),(1,2,3,0))
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.sppps = sppps
@@ -33,16 +32,17 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.shape=self.dataset.shape
 
     def reset(self):
-        self.observations = -1 * torch.ones([self.HEIGHT*self.WIDTH,3,8])
+        self.observations = -1 * torch.ones([8,3,self.HEIGHT,self.WIDTH])
         self.updated=False
         self.count=0
         self.loss=0
         self.new(0)
 
     def new(self,i):
-        self.dataset = np.transpose(self.data.data(i),(1,2,3,0))
+        self.dataset = self.data.data(i)
         self.add, self.gd = self.data.get(i)
-        self.gd = torch.Tensor(self.gd).permute(2,0,1).cuda(0)
+        self.add = np.transpose(self.add,(2,0,1)) #necessary
+        self.gd = torch.Tensor(self.gd).permute(2,0,1).cuda(0) #necessary
 
     def round_retain_sum(self,x):
      N = np.round(np.sum(x)).astype(int)
@@ -71,12 +71,12 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.updated=False
 
     def out(self,data):
-        return data.reshape(self.HEIGHT,self.WIDTH,-1)
+        return data.reshape(-1, self.HEIGHT,self.WIDTH)
 
     def render(self):        
       if not self.updated:
           self.optimizer.zero_grad()
-          input = torch.cat((self.observations.reshape(*self.shape[:2],-1),torch.Tensor(self.add)),-1).permute(2,0,1).unsqueeze(0)
+          input = torch.cat((self.observations.reshape(-1,*self.shape[-2:]),torch.Tensor(self.add)),0).unsqueeze(0)
           self.denoised= self.model(input.cuda(0))
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0))
           loss.backward()
@@ -95,7 +95,6 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
            plt.imshow(self.denoised[0].permute(1,2,0).detach().cpu())
            plt.savefig("images/out.png")
           self.loss= loss.detach().cpu()
-          self.denoised = self.denoised.reshape(3,-1).permute(1,0)
       self.updated=True
       return self.denoised
 
@@ -104,7 +103,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         temp = np.concatenate((
 self.out(self.observations),\
 self.out(self.add), \
- ),axis=-1).transpose((2,0,1))
+ ),axis=0)
         return temp, self.gd
 
 
@@ -121,13 +120,13 @@ def MultiSSIM(a,b,gpu_id):
   if gpu_id==-1:
     a[0] = a[0].type(torch.float32)
     b[0] = b[0].type(torch.float32)
-    d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0)
+    d = torch.cat([c.unsqueeze(0) for c in a],0)
     e = torch.cat([c for c in b],0)
     loss=MS_SSIM(data_range=1,size_average=False)
     return loss(d,e)
 
   else:
-    d = torch.cat([c.permute([2,0,1]).unsqueeze(0) for c in a],0).cuda(gpu_id)
+    d = torch.cat([c.unsqueeze(0) for c in a],0).cuda(gpu_id)
     e = torch.cat([c for c in b],0).cuda(gpu_id)
     loss=MS_SSIM(data_range=1,size_average=False).cuda(gpu_id)
     return loss(d,e.unsqueeze(0)).cpu() 
@@ -155,7 +154,7 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH),))
     self.observation_space = spaces.Box(low=-1, high=1, shape=
-                    (int(self.HEIGHT),int(self.WIDTH),66), dtype=np.float32) #MACHINE PRECISION
+                    (66,int(self.HEIGHT),int(self.WIDTH)), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
     self.top=0
 
@@ -167,8 +166,8 @@ class CustomEnv(gym.Env):
     self.simulation.simulate(action)
     observation,gd = self.simulation.observe()
     new = self.simulation.out(self.simulation.render())
-    base = self.simulation.dataset[:,:,:4].mean(-1)
-    base = torch.Tensor(base).reshape(self.HEIGHT,self.WIDTH,3)
+    base = self.simulation.dataset[:4].mean(0)
+    base = torch.Tensor(base)
 
     baseline = MultiSSIM([base],[gd],i)[0]
     old = MultiSSIM([old], [gd],i)[0]
@@ -185,7 +184,7 @@ class CustomEnv(gym.Env):
     reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count
     print(time.time()-a)
-    return observation.transpose(1,2,0),reward.detach().numpy(),done,{}
+    return observation,reward.detach().numpy(),done,{}
 
   def insight(self): 
     img= self.simulation.s
@@ -195,7 +194,7 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     temp ,_= self.simulation.observe()
     print("rest")
-    return temp.transpose(1,2,0)
+    return temp
     
 def save(data,name):
     img= T.ToPILImage()(data.permute([2,0,1]).type(torch.float32))

@@ -146,7 +146,7 @@ class UN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-         x = input_dict["obs"].type(torch.float32).permute(0, 3, 1, 2)
+         x = input_dict["obs"].type(torch.float32)
          x = self._convs(x)
          self.tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
          o=self.head(x)

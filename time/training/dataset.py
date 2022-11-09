@@ -80,9 +80,9 @@ class ValidationDataset(PreprocessedDataset):
 
     self.path = "/home/ascardigli/blender-3.2.2-linux-x64/suntemple/"
     sampling = np.arange(8).reshape(8,1,1,1)
-    sampling = np.repeat(sampling,720,axis=1)
-    sampling = np.repeat(sampling,720,axis=2) 
-    self.sampling = np.repeat(sampling,3,axis=3) 
+    sampling = np.repeat(sampling,3,axis=1) 
+    sampling = np.repeat(sampling,720,axis=2)
+    self.sampling = np.repeat(sampling,720,axis=3) 
     self.num_images=400
 
      
@@ -92,7 +92,7 @@ class ValidationDataset(PreprocessedDataset):
 
   def data(self,index):
     samples = np.concatenate([get_ith_image(self.path,i,index) for i in range(8)],0)
-    return samples
+    return samples.transpose(0,3,1,2)
 
 
   def translation(self,i,data):
@@ -108,26 +108,21 @@ class ValidationDataset(PreprocessedDataset):
    (cc, warp_matrix) = cv2.findTransformECC(im2_gray,im1_gray,warp_matrix, warp_mode, criteria)
    warp_matrix[:,2] = warp_matrix[:,2]/((2*720,2*720)) 
    flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0)[:,::,:],(1,3,720,720), align_corners=True).repeat(8,1,1,1)
-   temp= torch.nn.functional.grid_sample(.1+data.permute(3,2,0,1),\
-flow,align_corners=True).permute(2,3,1,0) 
+   temp= torch.nn.functional.grid_sample(.1+data,\
+flow,align_corners=True) 
    temp[temp==0]=-.9 #TODO
    return temp-.1
 
 
   def generate(self,samples,idxs,old_data,i):
-    old_data = old_data.reshape(720,720,3,8)
     if i !=0:
      old_data = self.translation(i,old_data)
-    old_data=old_data.permute(3,0,1,2)
-    samples = np.transpose(samples.reshape(720,720,3,8),(3,0,1,2))
     samples = np.concatenate([samples,old_data],0)
-    idxs=np.repeat(idxs.reshape(720,720,1),3,axis=-1)
+    idxs=np.repeat(idxs.reshape(1,720,720),3,axis=0)
     sampling = self.sampling
     sampling = sampling - idxs
 
     temp = torch.Tensor(np.take_along_axis(samples,sampling,0))
-
-    temp= temp.permute(1,2,3,0).reshape(-1,temp.shape[-1],temp.shape[0])
     return temp
 
 
