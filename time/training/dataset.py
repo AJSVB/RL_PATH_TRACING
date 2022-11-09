@@ -79,6 +79,7 @@ class ValidationDataset(PreprocessedDataset):
     super(ValidationDataset, self).__init__(cfg, name)
 
     self.path = "/home/ascardigli/blender-3.2.2-linux-x64/suntemple/"
+    self.temp = np.load("temp.npy")
     sampling = np.arange(8).reshape(8,1,1,1)
     sampling = np.repeat(sampling,3,axis=1) 
     sampling = np.repeat(sampling,720,axis=2)
@@ -96,17 +97,7 @@ class ValidationDataset(PreprocessedDataset):
 
 
   def translation(self,i,data):
-   img1 = get_truth(self.path,i-1)
-   img2 = get_truth(self.path,i)
-   import cv2
-   warp_matrix = np.eye(2, 3, dtype=np.float32)
-   warp_mode = cv2.MOTION_AFFINE
-   termination_eps = 1e-7
-   im1_gray = cv2.cvtColor(np.float32(img1),cv2.COLOR_BGR2GRAY)
-   im2_gray = cv2.cvtColor(np.float32(img2),cv2.COLOR_BGR2GRAY)
-   criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 5000,  termination_eps)
-   (cc, warp_matrix) = cv2.findTransformECC(im2_gray,im1_gray,warp_matrix, warp_mode, criteria)
-   warp_matrix[:,2] = warp_matrix[:,2]/((2*720,2*720)) 
+   warp_matrix = self.temp[i-1] 
    flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0)[:,::,:],(1,3,720,720), align_corners=True).repeat(8,1,1,1)
    temp= torch.nn.functional.grid_sample(.1+data,\
 flow,align_corners=True) 
