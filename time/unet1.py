@@ -110,7 +110,7 @@ class UN(TorchModelV2, nn.Module):
         nn.Module.__init__(self)
 
         
-        (w, h,in_channels) = obs_space.shape
+        (in_channels,w, h) = obs_space.shape
         self._convs = UNet(in_channels) #DualResNet(BasicBlock, [2, 2, 2, 2], num_classes=2, planes=32, spp_planes=128, head_planes=64, augment=in_channels)
 
 
