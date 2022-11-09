@@ -72,18 +72,18 @@ def get_aux(path,frame_number):
 
 
 
+import matplotlib.pyplot as plt
 
 class ValidationDataset(PreprocessedDataset):
   def __init__(self, cfg, name):
     super(ValidationDataset, self).__init__(cfg, name)
 
     self.path = "/home/ascardigli/blender-3.2.2-linux-x64/suntemple/"
-
+    sampling = np.arange(8).reshape(8,1,1,1)
+    sampling = np.repeat(sampling,720,axis=1)
+    sampling = np.repeat(sampling,720,axis=2) 
+    self.sampling = np.repeat(sampling,3,axis=3) 
     self.num_images=400
-    self.tiles = []
-
-    if self.num_images == 0:
-      return
 
      
   def __len__(self):
@@ -101,82 +101,40 @@ class ValidationDataset(PreprocessedDataset):
    import cv2
    warp_matrix = np.eye(2, 3, dtype=np.float32)
    warp_mode = cv2.MOTION_AFFINE
-   termination_eps = 1e-5
-
+   termination_eps = 1e-7
    im1_gray = cv2.cvtColor(np.float32(img1),cv2.COLOR_BGR2GRAY)
    im2_gray = cv2.cvtColor(np.float32(img2),cv2.COLOR_BGR2GRAY)
-   criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 50000,  termination_eps)
+   criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 5000,  termination_eps)
    (cc, warp_matrix) = cv2.findTransformECC(im2_gray,im1_gray,warp_matrix, warp_mode, criteria)
-   warp_matrix[:,2] = warp_matrix[:,2]/((2*720,2*1280)) 
-   flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0)[:,::,:],(1,3,720,1280), align_corners=True).repeat(8,1,1,1)
-   return torch.nn.functional.grid_sample(data.permute(3,2,0,1),\
+   warp_matrix[:,2] = warp_matrix[:,2]/((2*720,2*720)) 
+   flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0)[:,::,:],(1,3,720,720), align_corners=True).repeat(8,1,1,1)
+   temp= torch.nn.functional.grid_sample(.1+data.permute(3,2,0,1),\
 flow,align_corners=True).permute(2,3,1,0) 
+   temp[temp==0]=-.9 #TODO
+   return temp-.1
 
 
   def generate(self,samples,idxs,old_data,i):
     old_data = old_data.reshape(720,720,3,8)
-    #old_data = self.translation(i,old_data)
-#    old_data[old_data==0]=-1 #TODO
-    print(old_data[:,:,:,0].sum())
-    print(old_data[:,:,:,1].sum())
-    print(old_data[:,:,:,2].sum())
-    print(old_data[:,:,:,3].sum())
-    print(old_data[:,:,:,4].sum())
-    print(old_data[:,:,:,5].sum())
-    print(old_data[:,:,:,6].sum())
-    print(old_data[:,:,:,7].sum())
+    if i !=0:
+     old_data = self.translation(i,old_data)
+    old_data=old_data.permute(3,0,1,2)
     samples = np.transpose(samples.reshape(720,720,3,8),(3,0,1,2))
-    samples = np.concatenate([samples,np.ones((1,720,720,3))*-1],0)
+    samples = np.concatenate([samples,old_data],0)
     idxs=np.repeat(idxs.reshape(720,720,1),3,axis=-1)
-    sampling = np.arange(8).reshape(8,1,1,1)
-    sampling = np.repeat(sampling,720,axis=1)
-    sampling = np.repeat(sampling,720,axis=2) 
-    sampling = np.repeat(sampling,3,axis=3) 
+    sampling = self.sampling
     sampling = sampling - idxs
-    sampling[sampling<0] = 8
-    print(np.sum(sampling==0))
-    print(np.sum(sampling==1))
-    print(np.sum(sampling==2))
-    print(np.sum(sampling==3))
-    print(np.sum(sampling==4))
-    print(np.sum(sampling==5))
-    print(np.sum(sampling==6))
-    print(np.sum(sampling==7))
-    print(np.sum(sampling==8))
 
     temp = torch.Tensor(np.take_along_axis(samples,sampling,0))
-    old_data=temp
-    print(old_data[0].sum())
-    print(old_data[1].sum())
-    print(old_data[2].sum())
-    print(old_data[3].sum())
-    print(old_data[4].sum())
-    print(old_data[5].sum())
-    print(old_data[6].sum())
-    print(old_data[7].sum())
 
-    print()
+    temp= temp.permute(1,2,3,0).reshape(-1,temp.shape[-1],temp.shape[0])
     return temp
-  def get(self, index):
-    sy = sx = self.tile_size
 
+
+  def get(self, index):
     target_image = get_truth(self.path,index)
     input_image = get_aux(self.path,index)
     input_image=input_image.reshape(*input_image.shape[:2],-1)
-    input_image  = input_image [:720,:720]
-    target_image = target_image[:720,:720]
-    return image_to_tensor(input_image.copy()), image_to_tensor(target_image.copy())
+    return input_image, target_image
 
 
-  def __getitem__(self, index,samples=None):
-    a=time.time()
-    if samples is None:  
-      sample = self.sample(index) 
-    input_image=samples
-    aux = get_aux(self.path,index)
-    input_image=input_image.reshape(*input_image.shape[:2],-1)
-    input_image=np.concatenate([input_image,aux],-1)
-    input_image=input_image.reshape(*input_image.shape[:2],-1)
-    input_image  = input_image [:720,:720]
-    temp= image_to_tensor(input_image.copy()).unsqueeze(0).float()
-    return temp
