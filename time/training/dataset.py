@@ -29,7 +29,7 @@ import torchvision.transforms.functional as TF
 
 
 import functools
-#@functools.cache
+@functools.cache
 def get_ith_image(path,i,frame_number):
     image = Image.open(path+str(i).zfill(2) + "-" + str(frame_number).zfill(4)+'.png')
     #x = TF.to_tensor(image)
@@ -37,13 +37,12 @@ def get_ith_image(path,i,frame_number):
     return np.expand_dims(image,0)[:,:720,:720]/255.
 
 
-#@functools.cache
+@functools.cache
 def get_truth(path,frame_number):
     image= Image.open(path + "gd"+str(frame_number).zfill(4)+".png")
     #x = TF.to_tensor(image)
     return np.array(image)[:720,:720]/255.
 
-#@functools.cache
 def get_add(a,b,c):
     if b=="UVUV":
       b="00UVUV"
@@ -60,7 +59,7 @@ def get_add(a,b,c):
     else:
       return (z-b)/(a-b)*1.
 
-
+@functools.cache
 def get_aux(path,frame_number):
     f=path + "add"
     end = str(frame_number).zfill(4)+".png"
@@ -79,7 +78,7 @@ class ValidationDataset(PreprocessedDataset):
     super(ValidationDataset, self).__init__(cfg, name)
 
     self.path = "/home/ascardigli/blender-3.2.2-linux-x64/suntemple/"
-    self.temp = np.load("temp.npy")
+    self.temp = [np.load("temp"+str(i)+".npy") for i in range(14)]
     sampling = np.arange(8).reshape(8,1,1,1)
     sampling = np.repeat(sampling,3,axis=1) 
     sampling = np.repeat(sampling,720,axis=2)
@@ -97,7 +96,9 @@ class ValidationDataset(PreprocessedDataset):
 
 
   def translation(self,i,data):
-   warp_matrix = self.temp[i-1] 
+   a=(i-1)//100
+   b=(i-1)%100
+   warp_matrix = self.temp[a][b] 
    flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0)[:,::,:],(1,3,720,720), align_corners=True).repeat(8,1,1,1)
    temp= torch.nn.functional.grid_sample(.1+data,\
 flow,align_corners=True) 
