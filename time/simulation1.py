@@ -81,7 +81,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           input = torch.cat((self.observations.reshape(-1,*self.shape[-2:]),torch.Tensor(self.add)),0).unsqueeze(0)
           self.denoised= self.model(input.cuda(0))
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0))
-          if self.counter>75:
+          if self.count>75:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()

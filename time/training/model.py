@@ -25,6 +25,12 @@ def get_model(cfg):
 def Conv(in_channels, out_channels):
   return nn.Conv2d(in_channels, out_channels, 3, padding=1)
 
+# 1x1 convolution module
+def SimpleConv(in_channels, out_channels):
+  return nn.Conv2d(in_channels, out_channels, 1, padding=1)
+
+
+
 # ReLU function
 def relu(x):
   return F.relu(x, inplace=True)
@@ -64,7 +70,11 @@ class UNet(nn.Module):
     oc   = out_channels
 
     # Convolutions
-    self.enc_conv0  = Conv(ic,      ec1)
+
+
+
+    self.enc_conv0  = Conv(in_channels,      ec1)
+#    self.enc_conv0  = Conv(64,      ec1)
     self.enc_conv1  = Conv(ec1,     ec1)
     self.enc_conv2  = Conv(ec1,     ec2)
     self.enc_conv3  = Conv(ec2,     ec3)
@@ -81,10 +91,25 @@ class UNet(nn.Module):
     self.dec_conv1b = Conv(dc1a,    dc1b)
     self.dec_conv0  = Conv(dc1b,    oc)
 
-    # Images must be padded to multiples of the alignment
-    self.alignment = 16
+
+    nb = 128
+    self.a=Conv(ic+64,nb)
+    self.a1=SimpleConv(nb,nb)
+    self.b=Conv(nb,nb)
+    self.b1=SimpleConv(nb,nb) 
+    self.c=Conv(nb,64)
+
 
   def forward(self, input):
+    """
+    #Backbone
+    # ---------------------
+    input = relu(self.a(input))
+    input = relu(self.a1(input))
+    input = relu(self.b(input))
+    input = relu(self.b1(input))
+    input = relu(self.c(input))
+    """
     # Encoder
     # -------------------------------------------
 
@@ -131,4 +156,4 @@ class UNet(nn.Module):
 
     x = self.dec_conv0(x)            # dec_conv0
 
-    return x
+    return x #,input

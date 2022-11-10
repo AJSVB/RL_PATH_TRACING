@@ -115,6 +115,13 @@ flow,align_corners=True)
     sampling = sampling - idxs
 
     temp = torch.Tensor(np.take_along_axis(samples,sampling,0))
+
+    import torchvision.transforms as T
+
+    for j in range(8):
+     img= T.ToPILImage()(temp[j])
+     img.save(str("images/"+str(i)+"_"+str(j)+".png"))
+
     return temp
 
 
