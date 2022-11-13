@@ -22,18 +22,22 @@ def get_model(cfg):
 ## -----------------------------------------------------------------------------
 
 # 3x3 convolution module
-def Conv(in_channels, out_channels):
-  return nn.Conv2d(in_channels, out_channels, 3, padding=1)
+def Conv(in_channels, out_channels,padding=1):
+  return nn.Conv2d(in_channels, out_channels, 3, padding=padding)
 
 # 1x1 convolution module
 def SimpleConv(in_channels, out_channels):
-  return nn.Conv2d(in_channels, out_channels, 1, padding=1)
-
+  return nn.Conv2d(in_channels, out_channels, 1, padding=0)
 
 
 # ReLU function
 def relu(x):
   return F.relu(x, inplace=True)
+
+
+def tanh(x):
+  return torch.tanh(x)
+
 
 # 2x2 max pool function
 def pool(x):
@@ -56,7 +60,7 @@ class UNet(nn.Module):
     super(UNet, self).__init__()
 
     # Number of channels per layer
-    ic   = in_channels
+    ic   = 64
     ec1  = 32
     ec2  = 48
     ec3  = 64
@@ -73,7 +77,7 @@ class UNet(nn.Module):
 
 
 
-    self.enc_conv0  = Conv(in_channels,      ec1)
+    self.enc_conv0  = Conv(ic,      ec1)
 #    self.enc_conv0  = Conv(64,      ec1)
     self.enc_conv1  = Conv(ec1,     ec1)
     self.enc_conv2  = Conv(ec1,     ec2)
@@ -93,7 +97,7 @@ class UNet(nn.Module):
 
 
     nb = 128
-    self.a=Conv(ic+64,nb)
+    self.a=Conv(in_channels+64,nb)
     self.a1=SimpleConv(nb,nb)
     self.b=Conv(nb,nb)
     self.b1=SimpleConv(nb,nb) 
@@ -101,15 +105,13 @@ class UNet(nn.Module):
 
 
   def forward(self, input):
-    """
     #Backbone
     # ---------------------
     input = relu(self.a(input))
-    input = relu(self.a1(input))
+    #input = relu(self.a1(input))
     input = relu(self.b(input))
-    input = relu(self.b1(input))
-    input = relu(self.c(input))
-    """
+    #input = relu(self.b1(input))
+    input = tanh(self.c(input))
     # Encoder
     # -------------------------------------------
 
@@ -156,4 +158,4 @@ class UNet(nn.Module):
 
     x = self.dec_conv0(x)            # dec_conv0
 
-    return x #,input
+    return x ,input.squeeze(0)

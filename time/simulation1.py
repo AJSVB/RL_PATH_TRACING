@@ -38,6 +38,9 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.loss=0
         self.new(0)
         self.s = None
+        self.state = -1 * torch.ones([64,self.HEIGHT,self.WIDTH])
+
+
 
     def new(self,i):
         self.dataset = self.data.data(i)
@@ -78,14 +81,18 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
     def render(self):        
       if not self.updated:
           self.optimizer.zero_grad()
-          input = torch.cat((self.observations.reshape(-1,*self.shape[-2:]),torch.Tensor(self.add)),0).unsqueeze(0)
-          self.denoised= self.model(input.cuda(0))
-          loss = self.criterion(self.denoised, self.gd.unsqueeze(0))
+#          if self.count !=1:
+#              self.state = self.data.translation(self.count-1,self.state)
+          input= torch.cat((self.observations.reshape(-1,*self.shape[-2:]),torch.Tensor(self.add),\
+self.state),0).unsqueeze(0)
+          self.denoised, self.state= self.model(input.cuda(0))
+          loss = self.criterion(self.denoised, self.gd.unsqueeze(0))*10
           if self.count>75:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
           self.denoised = torch.clip(self.denoised.detach(),0,1).cpu()
+          self.state = self.state.detach().cpu()
           if random.random()<1e-3:
            input=input[0].detach().cpu()
            for i in range(len(input)):
@@ -103,11 +110,11 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 
 
     def observe(self):
-        temp = np.concatenate((
-self.out(self.observations),\
-self.out(self.add), \
- ),axis=0)
-        return temp, self.gd
+#        temp = np.concatenate((
+#self.out(self.observations),\
+#self.out(self.add), \
+# ),axis=0)
+        return self.state, self.gd
 
 
 class Spec:
@@ -157,7 +164,7 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH),))
     self.observation_space = spaces.Box(low=-1.0001, high=1, shape=
-                    (66,int(self.HEIGHT),int(self.WIDTH)), dtype=np.float32) #MACHINE PRECISION
+                    (64,int(self.HEIGHT),int(self.WIDTH)), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
     self.top=0
 
@@ -183,14 +190,16 @@ class CustomEnv(gym.Env):
         print(self.simulation.count)
         print()
         self.top = new
-        if self.top>.9:
+        if self.top>.95:
          save(base,"images/baseline.png")
          self.insight()
     reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count
-    return observation,reward.detach().numpy(),done,{}
+ #   print(self.f(observation))
+    return observation.numpy(),reward.detach().numpy(),done,{}
  
   def f(self,a):
+    a=a.numpy()
     print(a.shape)
     print(np.min(a))
     print(np.max(a))
@@ -206,7 +215,8 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     temp ,_= self.simulation.observe()
     print("rest")
-    return temp
+#    print(self.f(temp))
+    return temp.numpy()
     
 def save(data,name):
     img= T.ToPILImage()(data)

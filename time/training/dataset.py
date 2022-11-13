@@ -96,31 +96,37 @@ class ValidationDataset(PreprocessedDataset):
 
 
   def translation(self,i,data):
+   data = data.reshape(-1,720,720)
    a=(i-1)//100
    b=(i-1)%100
    warp_matrix = self.temp[a][b] 
-   flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0)[:,::,:],(1,3,720,720), align_corners=True).repeat(8,1,1,1)
-   temp= torch.nn.functional.grid_sample(.1+data,\
+   flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0)[:,::,:],\
+(1,3,720,720), align_corners=True)
+   temp= torch.nn.functional.grid_sample(.1+data.unsqueeze(0),\
 flow,align_corners=True) 
    temp[temp==0]=-.9 #TODO
-   return temp-.1
+   return (temp-.1).squeeze(0)
 
 
   def generate(self,samples,idxs,old_data,i):
     if i !=0:
      old_data = self.translation(i,old_data)
+    old_data=old_data.reshape(8,3,720,720)
     samples = np.concatenate([samples,old_data],0)
     idxs=np.repeat(idxs.reshape(1,720,720),3,axis=0)
     sampling = self.sampling
     sampling = sampling - idxs
+#    sampling[sampling<0] = 8
+#    print(len(sampling))
+#    print(len(sampling[sampling<0]))
 
     temp = torch.Tensor(np.take_along_axis(samples,sampling,0))
 
     import torchvision.transforms as T
 
-    for j in range(8):
-     img= T.ToPILImage()(temp[j])
-     img.save(str("images/"+str(i)+"_"+str(j)+".png"))
+#    for j in range(8):
+#     img= T.ToPILImage()(temp[j])
+#     img.save(str("images/"+str(i)+"_"+str(j)+".png"))
 
     return temp
 
