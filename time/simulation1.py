@@ -19,6 +19,11 @@ import random
 L=1
 
 
+def p(x,y):
+   a=1
+   print(x+str(y))
+
+
 class PhysicSimulation:
 
     def __init__(self,spp, sppps=.1,HEIGHT=480,WIDTH=730,sel=None):
@@ -33,73 +38,77 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 
     def reset(self):
         self.observations = -1 * torch.ones([8,3,self.HEIGHT,self.WIDTH])
-        self.updated=False
+        self.updated=True
+        self.denoised = torch.zeros([1,3,self.HEIGHT,self.WIDTH]).cuda(0)
         self.count=0
         self.loss=0
         self.new(0)
         self.s = None
-        self.state = -1 * torch.ones([64,self.HEIGHT,self.WIDTH])
+        self.state = -1 * torch.ones([64,self.HEIGHT,self.WIDTH]).cuda(0)
 
 
 
     def new(self,i):
         self.dataset = self.data.data(i)
         self.add, self.gd = self.data.get(i)
-        self.add = np.transpose(self.add,(2,0,1)) #necessary
+        self.add = torch.Tensor(self.add).permute(2,0,1).cuda(0) #necessary
         self.gd = torch.Tensor(self.gd).permute(2,0,1).cuda(0) #necessary
 
     def round_retain_sum(self,x,N):
      N = np.round(N).astype(int)
-     y = x.astype(int)
-     M=np.sum(y)
+     y = x.type(torch.int)
+     M=torch.sum(y)
      K = N - M 
-     z = y-x 
+     z = x-y 
      if K!=0:
-       idx = np.argpartition(z,K)[:K]
+       idx = torch.topk(z,K,sorted=False).indices
        y[idx] +=1     
      return y
 
     def simulate(self, x):
         b=time.time()
-        x = x - np.min(x) 
-        x=x.flatten().astype(np.float64)
-        N= np.sum(x)
+        x=torch.Tensor(x).cuda(0)
+        x = x - torch.min(x) 
+        x=torch.flatten(x).type(torch.float64)
+        N= torch.sum(x)
         temp = self.sppps*self.WIDTH*self.HEIGHT 
         x=x*temp/N
         N=temp
         s= self.round_retain_sum(x,N)
-        if random.random()>.99:
-            print(x)
-            print(s)
-            print(np.sum(s))
+        if random.random()>.999:
+            print(x.cpu())
+            print(s.cpu())
+            print(np.sum(s).cpu())
         s[s<0]=-1
         s[s>7] = 7
         self.s=s
         a=time.time()
         self.observations = self.data.generate(self.dataset,s,self.observations,self.count)
-        print("generate" + str(time.time()-a))
         self.count+=1
         self.updated=False
-        print("obserall" + str(time.time()-b))
 
     def out(self,data):
         return data.reshape(-1, self.HEIGHT,self.WIDTH)
 
     def render(self):        
       if not self.updated:
+          a=time.time()
           self.optimizer.zero_grad()
 #          if self.count !=1:
 #              self.state = self.data.translation(self.count-1,self.state)
-          input= torch.cat((self.observations.reshape(-1,*self.shape[-2:]),torch.Tensor(self.add),\
-self.state),0).unsqueeze(0)
-          self.denoised, self.state= self.model(input.cuda(0))
+          m1=self.observations.reshape(-1,*self.shape[-2:])
+          m2=self.add
+          m3=self.state
+          input= torch.cat((m1,m2,m3),0).unsqueeze(0)
+          self.denoised, self.state= self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) #*10
           if self.count<8:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
-          self.denoised = torch.clip(self.denoised.detach(),0,1).cpu()
-          self.state = self.state.detach().cpu()
+          self.denoised = torch.clip(self.denoised.detach(),0,1)
+          self.state = self.state.detach()
+
           if random.random()<1e-3:
            input=input[0].detach().cpu()
            for i in range(len(input)):
@@ -111,7 +120,9 @@ self.state),0).unsqueeze(0)
            plt.clf()
            plt.imshow(self.denoised[0].permute(1,2,0).detach().cpu())
            plt.savefig("images/out.png")
-          self.loss= loss.detach().cpu()
+
+
+
       self.updated=True
       return self.denoised
 
@@ -121,7 +132,7 @@ self.state),0).unsqueeze(0)
 #self.out(self.observations),\
 #self.out(self.add), \
 # ),axis=0)
-        return self.state, self.gd
+        return self.state.cpu(), self.gd
 
 
 class Spec:
@@ -143,10 +154,10 @@ def MultiSSIM(a,b,gpu_id):
     return loss(d,e)
 
   else:
-    d = torch.cat([c.unsqueeze(0) for c in a],0).cuda(gpu_id)
-    e = torch.cat([c for c in b],0).cuda(gpu_id)
-    loss=MS_SSIM(data_range=1,size_average=False).cuda(gpu_id)
-    return loss(d,e.unsqueeze(0)).cpu() 
+    d = torch.cat([c.unsqueeze(0) for c in a],0)
+    e = torch.cat([c for c in b],0)
+    loss=MS_SSIM(data_range=1,size_average=False)
+    return loss(d,e.unsqueeze(0)).cpu()
 
 
 
@@ -176,30 +187,26 @@ class CustomEnv(gym.Env):
     self.top=0
 
   def step(self, action):
-    def p(x,y):
-     	a=1
-    # print(x+str(y))
     a = time.time()
     self.simulation.new(self.simulation.count)
+    p("new ",time.time()-a)
     old = self.simulation.out(self.simulation.render())
+    p("1st render ",time.time()-a)
     i=-0 #works with 0 outside of tune.py TODO
-    p("reset,render ",time.time()-a)
     self.simulation.simulate(action)
-    p("simulate ",time.time()-a)
+    p("1st simulate ",time.time()-a)
     observation,gd = self.simulation.observe()
-    p("observe",time.time()-a)
+    p("observe ",time.time()-a)
     new = self.simulation.out(self.simulation.render())
     p("render ",time.time()-a)
     base = self.simulation.dataset[:4].mean(0)
-    base = torch.Tensor(base)
     baseline = MultiSSIM([base],[gd],i)[0]
     old = MultiSSIM([old], [gd],i)[0]
     new = MultiSSIM([new], [gd],i)[0]
-    p("massim ",time.time()-a)
     if  False and self.top<new:
         print("baseline " + str(baseline.item()))
         print("new "+str(new.item()))
-        print("denoiser "+str(self.simulation.loss.item()))
+        print("denoiser "+str(self.simulation.loss.detach().cpu().item()))
         print("time "+ str(time.time()-a))
         print(self.simulation.count)
         print()

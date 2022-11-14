@@ -79,9 +79,8 @@ class ValidationDataset(PreprocessedDataset):
 
     self.path = "/home/ascardigli/blender-3.2.2-linux-x64/suntemple/"
     self.temp = [np.load("temp"+str(i)+".npy") for i in range(14)]
-    sampling = np.arange(8).reshape(8,1,1,1)
-    sampling = np.repeat(sampling,720,axis=2)
-    self.sampling = np.repeat(sampling,720,axis=3) 
+    sampling = torch.arange(8).reshape(8,1,1,1).cuda(0)
+    self.sampling = sampling.repeat(1,1,720,720)
     self.num_images=400
 
      
@@ -90,8 +89,8 @@ class ValidationDataset(PreprocessedDataset):
 
 
   def data(self,index):
-    samples = np.concatenate([get_ith_image(self.path,i,index) for i in range(8)],0)
-    return samples.transpose(0,3,1,2)
+    samples = torch.cat([torch.Tensor(get_ith_image(self.path,i,index)).cuda(0) for i in range(8)],0)
+    return samples.permute(0,3,1,2)
 
 
   def translation(self,i,data):
@@ -108,14 +107,12 @@ flow,align_corners=True)
 
 
   def generate(self,samples,idxs,old_data,i):
-    samples = np.concatenate([samples,-1*np.ones((1,3,720,720))],0)
+    samples = torch.cat([samples,-1*torch.ones((1,3,720,720)).cuda(0)],0)
     idxs= idxs.reshape(1,720,720)
     sampling = self.sampling - idxs
     sampling[sampling<0] = 8
-    print(sampling.shape)
-    print(samples.shape)
-    sampling = np.repeat(sampling,3,axis=1)
-    temp = torch.Tensor(np.take_along_axis(samples,sampling,0))
+    sampling = sampling.repeat(1,3,1,1)
+    temp = torch.take_along_dim(samples,sampling,dim=0)
 #    for j in range(8):
 #     img= T.ToPILImage()(temp[j])
 #     img.save(str("images/"+str(i)+"_"+str(j)+".png"))
