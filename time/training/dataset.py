@@ -80,7 +80,6 @@ class ValidationDataset(PreprocessedDataset):
     self.path = "/home/ascardigli/blender-3.2.2-linux-x64/suntemple/"
     self.temp = [np.load("temp"+str(i)+".npy") for i in range(14)]
     sampling = np.arange(8).reshape(8,1,1,1)
-    sampling = np.repeat(sampling,3,axis=1) 
     sampling = np.repeat(sampling,720,axis=2)
     self.sampling = np.repeat(sampling,720,axis=3) 
     self.num_images=400
@@ -109,21 +108,14 @@ flow,align_corners=True)
 
 
   def generate(self,samples,idxs,old_data,i):
-    if i !=0:
-     old_data = self.translation(i,old_data)
-    old_data=old_data.reshape(8,3,720,720)
-    samples = np.concatenate([samples,old_data],0)
-    idxs=np.repeat(idxs.reshape(1,720,720),3,axis=0)
-    sampling = self.sampling
-    sampling = sampling - idxs
-#    sampling[sampling<0] = 8
-#    print(len(sampling))
-#    print(len(sampling[sampling<0]))
-
+    samples = np.concatenate([samples,-1*np.ones((1,3,720,720))],0)
+    idxs= idxs.reshape(1,720,720)
+    sampling = self.sampling - idxs
+    sampling[sampling<0] = 8
+    print(sampling.shape)
+    print(samples.shape)
+    sampling = np.repeat(sampling,3,axis=1)
     temp = torch.Tensor(np.take_along_axis(samples,sampling,0))
-
-    import torchvision.transforms as T
-
 #    for j in range(8):
 #     img= T.ToPILImage()(temp[j])
 #     img.save(str("images/"+str(i)+"_"+str(j)+".png"))

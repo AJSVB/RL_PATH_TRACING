@@ -48,22 +48,26 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.add = np.transpose(self.add,(2,0,1)) #necessary
         self.gd = torch.Tensor(self.gd).permute(2,0,1).cuda(0) #necessary
 
-    def round_retain_sum(self,x):
-     N = np.round(np.sum(x)).astype(int)
+    def round_retain_sum(self,x,N):
+     N = np.round(N).astype(int)
      y = x.astype(int)
      M=np.sum(y)
      K = N - M 
-     z = x-y 
+     z = y-x 
      if K!=0:
-       idx = np.argsort(z)[-K:]
+       idx = np.argpartition(z,K)[:K]
        y[idx] +=1     
      return y
 
     def simulate(self, x):
-        x = x - np.min(x)
+        b=time.time()
+        x = x - np.min(x) 
         x=x.flatten().astype(np.float64)
-        x=x*self.sppps*self.WIDTH*self.HEIGHT/sum(x)
-        s=np.array(self.round_retain_sum(x))
+        N= np.sum(x)
+        temp = self.sppps*self.WIDTH*self.HEIGHT 
+        x=x*temp/N
+        N=temp
+        s= self.round_retain_sum(x,N)
         if random.random()>.99:
             print(x)
             print(s)
@@ -71,9 +75,12 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         s[s<0]=-1
         s[s>7] = 7
         self.s=s
+        a=time.time()
         self.observations = self.data.generate(self.dataset,s,self.observations,self.count)
+        print("generate" + str(time.time()-a))
         self.count+=1
         self.updated=False
+        print("obserall" + str(time.time()-b))
 
     def out(self,data):
         return data.reshape(-1, self.HEIGHT,self.WIDTH)
@@ -87,7 +94,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 self.state),0).unsqueeze(0)
           self.denoised, self.state= self.model(input.cuda(0))
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) #*10
-          if self.count<75:
+          if self.count<8:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
@@ -156,7 +163,7 @@ class CustomEnv(gym.Env):
     self.sppps = env_config["sppps"]
     self.HEIGHT = 720 
     self.WIDTH =   720
-    self.max = int((self.spp)/self.sppps)*100
+    self.max = int((self.spp)/self.sppps)*10
     self.id = env_config.vector_index
     self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
     self.model=self.model.to("cuda:0")
@@ -169,20 +176,27 @@ class CustomEnv(gym.Env):
     self.top=0
 
   def step(self, action):
+    def p(x,y):
+     	a=1
+    # print(x+str(y))
     a = time.time()
     self.simulation.new(self.simulation.count)
     old = self.simulation.out(self.simulation.render())
     i=-0 #works with 0 outside of tune.py TODO
+    p("reset,render ",time.time()-a)
     self.simulation.simulate(action)
+    p("simulate ",time.time()-a)
     observation,gd = self.simulation.observe()
+    p("observe",time.time()-a)
     new = self.simulation.out(self.simulation.render())
+    p("render ",time.time()-a)
     base = self.simulation.dataset[:4].mean(0)
     base = torch.Tensor(base)
-
     baseline = MultiSSIM([base],[gd],i)[0]
     old = MultiSSIM([old], [gd],i)[0]
     new = MultiSSIM([new], [gd],i)[0]
-    if  self.top<new:
+    p("massim ",time.time()-a)
+    if  False and self.top<new:
         print("baseline " + str(baseline.item()))
         print("new "+str(new.item()))
         print("denoiser "+str(self.simulation.loss.item()))
@@ -195,7 +209,8 @@ class CustomEnv(gym.Env):
          self.insight()
     reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count
- #   print(self.f(observation))
+    p("done ",time.time()-a)
+    print()
     return observation.numpy(),reward.detach().numpy(),done,{}
  
   def f(self,a):
