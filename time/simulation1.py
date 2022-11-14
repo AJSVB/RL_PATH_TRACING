@@ -21,7 +21,7 @@ L=1
 
 def p(x,y):
    a=1
-   print(x+str(y))
+#   print(x+str(y))
 
 
 class PhysicSimulation:
@@ -78,7 +78,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         if random.random()>.999:
             print(x.cpu())
             print(s.cpu())
-            print(np.sum(s).cpu())
+            print(torch.sum(s).cpu())
         s[s<0]=-1
         s[s>7] = 7
         self.s=s
@@ -217,7 +217,6 @@ class CustomEnv(gym.Env):
     reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count
     p("done ",time.time()-a)
-    print()
     return observation.numpy(),reward.detach().numpy(),done,{}
  
   def f(self,a):
