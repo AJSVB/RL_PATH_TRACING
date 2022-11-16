@@ -64,7 +64,7 @@ def get_aux(path,frame_number):
     f=path + "add"
     end = str(frame_number).zfill(4)+".png"
     imgs = np.concatenate([get_add(f,2*g,end) for g   in \
- ["Image","Alpha","Depth","Mist","Position","Normal","Vector","IndexOB","IndexMA",\
+ ["Alpha","Vector","IndexOB","IndexMA",\
     "DiffCol","Denoising Normal","Denoising Albedo","Denoising Depth","UV"]],-1)
     return imgs
 
@@ -98,7 +98,7 @@ class ValidationDataset(PreprocessedDataset):
    a=(i-1)//100
    b=(i-1)%100
    warp_matrix = self.temp[a][b] 
-   flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0)[:,::,:],\
+   flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0).cuda(0),\
 (1,3,720,720), align_corners=True)
    temp= torch.nn.functional.grid_sample(.1+data.unsqueeze(0),\
 flow,align_corners=True) 
@@ -106,16 +106,13 @@ flow,align_corners=True)
    return (temp-.1).squeeze(0)
 
 
-  def generate(self,samples,idxs,old_data,i):
+  def generate(self,samples,idxs,i):
     samples = torch.cat([samples,-1*torch.ones((1,3,720,720)).cuda(0)],0)
     idxs= idxs.reshape(1,720,720)
     sampling = self.sampling - idxs
     sampling[sampling<0] = 8
     sampling = sampling.repeat(1,3,1,1)
     temp = torch.take_along_dim(samples,sampling,dim=0)
-#    for j in range(8):
-#     img= T.ToPILImage()(temp[j])
-#     img.save(str("images/"+str(i)+"_"+str(j)+".png"))
 
     return temp
 

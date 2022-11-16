@@ -84,8 +84,8 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
         'num_workers':1, #8, TODO
 #"",
 #"evaluation_num_workers":1,
-'num_cpus_per_worker':6,
-'num_gpus_per_worker':.5,
+'num_cpus_per_worker':24,
+'num_gpus_per_worker':3,
 #"evaluation_interval":10,
 "rollout_fragment_length":2, 
   "model":{
@@ -100,7 +100,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 })
     # Train for one iteration.
     from ray.air import session
-    for _ in range(1000):
+    for _ in range(2000):
          a = algo.train()
     # Save state of the trained Algorithm in a checkpoint.
    # algo.save("/tmp/rllib_checkpoint")

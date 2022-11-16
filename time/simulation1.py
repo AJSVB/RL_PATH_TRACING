@@ -83,7 +83,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         s[s>7] = 7
         self.s=s
         a=time.time()
-        self.observations = self.data.generate(self.dataset,s,self.observations,self.count)
+        self.observations = self.data.generate(self.dataset,s,self.count)
         self.count+=1
         self.updated=False
 
@@ -94,22 +94,22 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
       if not self.updated:
           a=time.time()
           self.optimizer.zero_grad()
-#          if self.count !=1:
-#              self.state = self.data.translation(self.count-1,self.state)
+          if self.count !=1:
+              self.state = self.data.translation(self.count-1,self.state)
           m1=self.observations.reshape(-1,*self.shape[-2:])
           m2=self.add
           m3=self.state
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
           self.denoised, self.state= self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) #*10
-          if self.count<8:
+          if self.count<5:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
           self.denoised = torch.clip(self.denoised.detach(),0,1)
           self.state = self.state.detach()
 
-          if random.random()<1e-3:
+          if random.random()<1e-4:
            input=input[0].detach().cpu()
            for i in range(len(input)):
             plt.imshow(input[i])
@@ -120,6 +120,9 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
            plt.clf()
            plt.imshow(self.denoised[0].permute(1,2,0).detach().cpu())
            plt.savefig("images/out.png")
+           plt.clf()
+           plt.imshow(self.s.detach().cpu().reshape(720,720))
+           plt.savefig("images/hitmap.png")
 
 
 
@@ -201,6 +204,15 @@ class CustomEnv(gym.Env):
     p("render ",time.time()-a)
     base = self.simulation.dataset[:4].mean(0)
     baseline = MultiSSIM([base],[gd],i)[0]
+
+    if self.bool:
+     te = str(self.simulation.count)
+     save(base.cpu(),"images/base"+te+".png")
+     save(new.cpu(),"images/new"+te+".png")
+     save(gd.cpu(),"images/gd"+te+".png")
+
+
+
     old = MultiSSIM([old], [gd],i)[0]
     new = MultiSSIM([new], [gd],i)[0]
     if  False and self.top<new:
@@ -214,6 +226,9 @@ class CustomEnv(gym.Env):
         if self.top>.95:
          save(base,"images/baseline.png")
          self.insight()
+
+
+
     reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count
     p("done ",time.time()-a)
@@ -233,9 +248,11 @@ class CustomEnv(gym.Env):
     te=str(self.top.item())
     save(img.astype(np.float32),"images/"+te+".png")
   def reset(self):
+    self.bool=False
+    if random.random()<0.01:
+      self.bool=True
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     temp ,_= self.simulation.observe()
-    print("rest")
 #    print(self.f(temp))
     return temp.numpy()
     
