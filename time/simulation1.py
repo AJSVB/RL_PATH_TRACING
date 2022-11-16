@@ -185,7 +185,7 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH),))
     self.observation_space = spaces.Box(low=-1.0001, high=1, shape=
-                    (64,int(self.HEIGHT),int(self.WIDTH)), dtype=np.float32) #MACHINE PRECISION
+                    (64,int(self.HEIGHT),int(self.WIDTH)), dtype=torch.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
     self.top=0
     self.a=time.time()
@@ -229,7 +229,7 @@ class CustomEnv(gym.Env):
     done = self.spec.max_episode_steps <= self.simulation.count
     print("outside step " + t + ", inside step "+str(time.time()-self.a))
     self.a=time.time()
-    return observation.numpy(),reward.detach().numpy(),done,{}
+    return observation,reward.detach().numpy(),done,{}
  
   def f(self,a):
     a=a.numpy()
@@ -252,7 +252,7 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     temp ,_= self.simulation.observe()
 #    print(self.f(temp))
-    return temp.numpy()
+    return temp
     
 def save(data,name):
     img= T.ToPILImage()(data)
