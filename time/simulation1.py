@@ -102,7 +102,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
           self.denoised, self.state= self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) #*2
-          if self.count<5:
+          if self.count<80:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
