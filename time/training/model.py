@@ -108,9 +108,9 @@ class UNet(nn.Module):
     #Backbone
     # ---------------------
     input = relu(self.a(input))
-    #input = relu(self.a1(input))
+#    input = relu(self.a1(input))
     input = relu(self.b(input))
-    #input = relu(self.b1(input))
+ #   input = relu(self.b1(input))
     input = tanh(self.c(input))
     # Encoder
     # -------------------------------------------

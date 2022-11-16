@@ -101,7 +101,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           m3=self.state
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
           self.denoised, self.state= self.model(input)
-          loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) #*10
+          loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) #*2
           if self.count<5:
             loss.backward()
             self.optimizer.step()
@@ -177,7 +177,7 @@ class CustomEnv(gym.Env):
     self.sppps = env_config["sppps"]
     self.HEIGHT = 720 
     self.WIDTH =   720
-    self.max = int((self.spp)/self.sppps)*10
+    self.max = int((self.spp)/self.sppps)*100
     self.id = env_config.vector_index
     self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
     self.model=self.model.to("cuda:0")
@@ -188,20 +188,16 @@ class CustomEnv(gym.Env):
                     (64,int(self.HEIGHT),int(self.WIDTH)), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
     self.top=0
-
+    self.a=time.time()
   def step(self, action):
-    a = time.time()
+    t = str(time.time()-self.a)
+    self.a = time.time()
     self.simulation.new(self.simulation.count)
-    p("new ",time.time()-a)
     old = self.simulation.out(self.simulation.render())
-    p("1st render ",time.time()-a)
     i=-0 #works with 0 outside of tune.py TODO
     self.simulation.simulate(action)
-    p("1st simulate ",time.time()-a)
     observation,gd = self.simulation.observe()
-    p("observe ",time.time()-a)
     new = self.simulation.out(self.simulation.render())
-    p("render ",time.time()-a)
     base = self.simulation.dataset[:4].mean(0)
     baseline = MultiSSIM([base],[gd],i)[0]
 
@@ -231,7 +227,8 @@ class CustomEnv(gym.Env):
 
     reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count
-    p("done ",time.time()-a)
+    print("outside step " + t + ", inside step "+str(time.time()-self.a))
+    self.a=time.time()
     return observation.numpy(),reward.detach().numpy(),done,{}
  
   def f(self,a):
@@ -248,6 +245,7 @@ class CustomEnv(gym.Env):
     te=str(self.top.item())
     save(img.astype(np.float32),"images/"+te+".png")
   def reset(self):
+    a=time.time()
     self.bool=False
     if random.random()<0.01:
       self.bool=True
