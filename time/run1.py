@@ -31,14 +31,15 @@ def generate_partition():
     return np.sort(l)[::-1]
 
 
-def train_ppo_model(spp=4,c=1,sppps=.5):
+def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
     spp=int(spp)
     c = int(c)
     sppps = float(sppps)
     a = time.time()
+    i=int(i)
     algo = appo.APPO(env=simulation1.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
-'frame_number':1, 'spp':spp, "sppps":sppps,"denoising":True,"prob_sampling":True,"partition":[1]
+'frame_number':1, 'spp':spp, "sppps":sppps,"denoising":True,"prob_sampling":True,"partition":[1],"i":i
             },
           'framework' :"torch",
 "num_gpus":4,
@@ -88,7 +89,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 'num_cpus_per_worker':24,
 'num_gpus_per_worker':3,
 #"evaluation_interval":10,
-"rollout_fragment_length":2, 
+"rollout_fragment_length":4, 
   "model":{
    "custom_model":"UN",
 "conv_filters":[[16, [c, c], 1],[16, [c, c], 1],[2, [c, c], 1], [1, [c, c], 1]],
@@ -110,6 +111,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 #simulation.ground_truth("../datasets/temple/",name="truth.png")
 if __name__ == "__main__":
  import sys
- te = sys.argv[-3:]
- spp,c,sppps =  te
- train_ppo_model(spp,c,sppps)
+ te = sys.argv[-4:]
+ spp,c,sppps,i =  te
+ i=2**int(i)
+ train_ppo_model(spp,c,sppps,i)

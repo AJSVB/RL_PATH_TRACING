@@ -11,7 +11,7 @@ from .util import *
 
 def get_model(cfg):
   type = cfg.model
-  num_input_channels = 51
+  num_input_channels = 33
   if type == 'unet':
     return UNet(num_input_channels)
   else:
@@ -60,7 +60,7 @@ class UNet(nn.Module):
     super(UNet, self).__init__()
 
     # Number of channels per layer
-    ic   = 64
+    ic   = 32
     ec1  = 32
     ec2  = 48
     ec3  = 64
@@ -96,12 +96,12 @@ class UNet(nn.Module):
     self.dec_conv0  = Conv(dc1b,    oc)
 
 
-    nb = 128
-    self.a=Conv(in_channels+64,nb)
+    nb = 64
+    self.a=Conv(in_channels+ic,nb)
     self.a1=SimpleConv(nb,nb)
     self.b=Conv(nb,nb)
     self.b1=SimpleConv(nb,nb) 
-    self.c=Conv(nb,64)
+    self.c=Conv(nb,ic)
 
 
   def forward(self, input):

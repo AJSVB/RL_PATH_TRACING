@@ -35,6 +35,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.sppps = sppps
         self.reset()
         self.shape=self.dataset.shape
+        self.i = sel.i
 
     def reset(self):
         self.observations = -1 * torch.ones([8,3,self.HEIGHT,self.WIDTH])
@@ -44,7 +45,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.loss=0
         self.new(0)
         self.s = None
-        self.state = -1 * torch.ones([64,self.HEIGHT,self.WIDTH]).cuda(0)
+        self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
 
 
 
@@ -94,14 +95,12 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
       if not self.updated:
           a=time.time()
           self.optimizer.zero_grad()
-          if self.count !=1:
-              self.state = self.data.translation(self.count-1,self.state)
           m1=self.observations.reshape(-1,*self.shape[-2:])
           m2=self.add
           m3=self.state
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
           self.denoised, self.state= self.model(input)
-          loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) #*2
+          loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) * self.i
           if self.count<80:
             loss.backward()
             self.optimizer.step()
@@ -131,11 +130,12 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 
 
     def observe(self):
-#        temp = np.concatenate((
-#self.out(self.observations),\
-#self.out(self.add), \
-# ),axis=0)
-        return self.state.cpu(), self.gd
+        if self.count >1:
+            self.state = self.data.translation(self.count-1,self.state)
+        m2=self.add
+        m3=self.state.detach()
+        input= torch.cat((m2,m3),0)
+        return input.cpu(), self.gd
 
 
 class Spec:
@@ -179,19 +179,18 @@ class CustomEnv(gym.Env):
     self.WIDTH =   720
     self.max = int((self.spp)/self.sppps)*100
     self.id = env_config.vector_index
+    self.i = env_config["i"]
     self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
     self.model=self.model.to("cuda:0")
     self.criterion = self.criterion.to("cuda:0")
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH),))
     self.observation_space = spaces.Box(low=-1.0001, high=1, shape=
-                    (64,int(self.HEIGHT),int(self.WIDTH)), dtype=torch.float32) #MACHINE PRECISION
+                    (41,int(self.HEIGHT),int(self.WIDTH)), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
     self.top=0
     self.a=time.time()
   def step(self, action):
-    t = str(time.time()-self.a)
-    self.a = time.time()
     self.simulation.new(self.simulation.count)
     old = self.simulation.out(self.simulation.render())
     i=-0 #works with 0 outside of tune.py TODO
@@ -227,9 +226,7 @@ class CustomEnv(gym.Env):
 
     reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count
-    print("outside step " + t + ", inside step "+str(time.time()-self.a))
-    self.a=time.time()
-    return observation,reward.detach().numpy(),done,{}
+    return observation.numpy(),reward.detach().numpy(),done,{}
  
   def f(self,a):
     a=a.numpy()
@@ -252,7 +249,7 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     temp ,_= self.simulation.observe()
 #    print(self.f(temp))
-    return temp
+    return temp.numpy()
     
 def save(data,name):
     img= T.ToPILImage()(data)

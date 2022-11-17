@@ -64,8 +64,10 @@ def get_aux(path,frame_number):
     f=path + "add"
     end = str(frame_number).zfill(4)+".png"
     imgs = np.concatenate([get_add(f,2*g,end) for g   in \
- ["Alpha","Vector","IndexOB","IndexMA",\
-    "DiffCol","Denoising Normal","Denoising Albedo","Denoising Depth","UV"]],-1)
+# ["Alpha","Vector","IndexOB","IndexMA", "DiffCol",\
+["Denoising Normal","Denoising Albedo","Denoising Depth"] # \
+#,"UV"\
+],-1)
     return imgs
 
 
