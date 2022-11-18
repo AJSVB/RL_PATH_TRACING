@@ -36,7 +36,7 @@ def main_worker():
   lr_scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
     max_lr=cfg.max_lr,
-    total_steps=cfg.num_epochs*1000,
+    total_steps=cfg.num_epochs*10000,
     pct_start=cfg.lr_warmup,
     anneal_strategy='cos',
     div_factor=(25. if cfg.lr is None else cfg.max_lr / cfg.lr),
