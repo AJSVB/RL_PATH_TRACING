@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import time
 from .dataset import *
 from .util import *
 
@@ -62,15 +62,15 @@ class UNet(nn.Module):
     # Number of channels per layer
     ic   = 32
     ec1  = 32
-    ec2  = 48
-    ec3  = 64
-    ec4  = 80
-    ec5  = 96
-    dc4  = 112
-    dc3  = 96
-    dc2  = 64
-    dc1a = 64
-    dc1b = 32
+    ec2  = 48//2
+    ec3  = 64//2
+    ec4  = 80//2
+    ec5  = 96//2
+    dc4  = 112//2
+    dc3  = 96//2
+    dc2  = 64//2
+    dc1a = 64//2
+    dc1b = 32//2
     oc   = out_channels
 
     # Convolutions
@@ -96,25 +96,30 @@ class UNet(nn.Module):
     self.dec_conv0  = Conv(dc1b,    oc)
 
 
-    nb = 64
+    nb = 32
     self.a=Conv(in_channels+ic,nb)
     self.a1=SimpleConv(nb,nb)
     self.b=Conv(nb,nb)
     self.b1=SimpleConv(nb,nb) 
     self.c=Conv(nb,ic)
 
-
   def forward(self, input):
+    #a=time.time()
     #Backbone
     # ---------------------
     input = relu(self.a(input))
 #    input = relu(self.a1(input))
+
     input = relu(self.b(input))
  #   input = relu(self.b1(input))
+
     input = tanh(self.c(input))
+
+    #torch.cuda.synchronize()
+    #print("state "+str(time.time()-a))
     # Encoder
     # -------------------------------------------
-
+    a=time.time()
     x = relu(self.enc_conv0(input))  # enc_conv0
 
     x = relu(self.enc_conv1(x))      # enc_conv1
@@ -157,5 +162,7 @@ class UNet(nn.Module):
     x = relu(self.dec_conv1b(x))     # dec_conv1b
 
     x = self.dec_conv0(x)            # dec_conv0
+    #torch.cuda.synchronize()         
+    #print("decoder "+str(time.time()-a))
 
     return x ,input.squeeze(0)

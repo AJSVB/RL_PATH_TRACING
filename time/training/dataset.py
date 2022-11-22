@@ -71,13 +71,19 @@ def get_aux(path,frame_number):
     return imgs
 
 
-
-
-import matplotlib.pyplot as plt
+#get_aux.cache_clear()
+#get_truth.cache_clear()
+#get_ith_image.cache_clear()
+#import gc
+#gc.collect()
+#objects = [i for i in gc.get_objects() if isinstance(i, functools._lru_cache_wrapper)]
+#for object in objects:
+# object.cache_clear()
+#import matplotlib.pyplot as plt
 
 class ValidationDataset(PreprocessedDataset):
   def __init__(self, cfg, name):
-    super(ValidationDataset, self).__init__(cfg, name)
+#    super(ValidationDataset, self).__init__(cfg, name)
 
     self.path = "/home/ascardigli/blender-3.2.2-linux-x64/suntemple/"
     self.temp = [np.load("temp"+str(i)+".npy") for i in range(14)]

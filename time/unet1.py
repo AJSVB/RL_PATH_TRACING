@@ -162,7 +162,8 @@ class UN(TorchModelV2, nn.Module):
       import time
       out=self.f(input_dict,state,seq_lens)
       out=out.reshape(out.shape[0],-1)
-      return torch.nn.Tanh()(out)*20-10, state
+      temp =  torch.nn.Tanh()(out)*20-10
+      return temp, state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:

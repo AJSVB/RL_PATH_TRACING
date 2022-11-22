@@ -101,7 +101,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
           self.denoised, self.state= self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) * self.i
-          if self.count<80:
+          if self.count<160:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
@@ -177,7 +177,7 @@ class CustomEnv(gym.Env):
     self.sppps = env_config["sppps"]
     self.HEIGHT = 720 
     self.WIDTH =   720
-    self.max = int((self.spp)/self.sppps)*100
+    self.max = int((self.spp)/self.sppps)*200
     self.id = env_config.vector_index
     self.i = env_config["i"]
     self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
@@ -242,6 +242,7 @@ class CustomEnv(gym.Env):
     te=str(self.top.item())
     save(img.astype(np.float32),"images/"+te+".png")
   def reset(self):
+    print("res")
     a=time.time()
     self.bool=False
     if random.random()<0.01:

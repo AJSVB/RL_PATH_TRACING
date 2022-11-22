@@ -72,6 +72,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
             "grad_clip": 4,
           #"momentum": tune.uniform(.5,1) ,
           #"epsilon": .3,
+"replay_buffer_num_slots":60,
           "vf_loss_coeff": .5,
           "entropy_coeff": 1e-5 ,
 
@@ -84,10 +85,10 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
 "num_envs_per_worker":1,
         'num_workers':1, #8, TODO
 #"",
-
+"num_gpus":4,
 #"evaluation_num_workers":1,
-'num_cpus_per_worker':24,
-'num_gpus_per_worker':3,
+'num_cpus_per_worker':48,
+'num_gpus_per_worker':4,
 #"evaluation_interval":10,
 "rollout_fragment_length":4, 
   "model":{
@@ -102,7 +103,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
 })
     # Train for one iteration.
     from ray.air import session
-    for _ in range(2000):
+    for _ in range(10000):
          a = algo.train()
     # Save state of the trained Algorithm in a checkpoint.
    # algo.save("/tmp/rllib_checkpoint")
