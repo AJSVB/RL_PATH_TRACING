@@ -103,7 +103,7 @@ class ValidationDataset(PreprocessedDataset):
 
   def translation(self,i,data):
    data = data.reshape(-1,720,720)
-   i=i-1
+#   i=i+1
    if i ==99:
     i+=1
    a=(i)//100 #TODO check

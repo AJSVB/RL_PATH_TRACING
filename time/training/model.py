@@ -39,6 +39,10 @@ def tanh(x):
   return torch.tanh(x)
 
 
+def sig(x):
+  return torch.sigmoid(x)
+
+
 # 2x2 max pool function
 def pool(x):
   return F.max_pool2d(x, 2, 2)
@@ -165,4 +169,4 @@ class UNet(nn.Module):
     #torch.cuda.synchronize()         
     #print("decoder "+str(time.time()-a))
 
-    return x ,input.squeeze(0)
+    return torch.nn.clip(sig(x)*1.01,0,1) ,input.squeeze(0)

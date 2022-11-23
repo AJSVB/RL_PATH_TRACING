@@ -18,7 +18,7 @@ import random
 from torchmetrics import PeakSignalNoiseRatio
 from torchmetrics.functional import mean_squared_error
 L=1
-psnr = PeakSignalNoiseRatio()
+psnr = PeakSignalNoiseRatio().cuda(0)
 
 def p(x,y):
    a=1
@@ -101,7 +101,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           m3=self.state
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
           self.denoised, self.state= self.model(input)
-          loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) * self.i
+          loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) * self.i 
           if self.count<80:
             loss.backward()
             self.optimizer.step()
@@ -217,6 +217,10 @@ class CustomEnv(gym.Env):
 
 
 
+    self.mses.append(mean_squared_error(new,gd))
+    self.psnrs.append(psnr(new,gd))
+
+
     old = MultiSSIM([old], [gd],i)[0]
     new = MultiSSIM([new], [gd],i)[0]
     if  False and self.top<new:
@@ -231,8 +235,6 @@ class CustomEnv(gym.Env):
          save(base,"images/baseline.png")
          self.insight()
 
-    self.mses.append(mean_squared_error(new,gd))
-    self.psnrs.append(psnr(new,gd))
 
     reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count
