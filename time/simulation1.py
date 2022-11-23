@@ -15,9 +15,10 @@ import os
 from training import  train
 import matplotlib.pyplot as plt
 import random
-
+from torchmetrics import PeakSignalNoiseRatio
+from torchmetrics.functional import mean_squared_error
 L=1
-
+psnr = PeakSignalNoiseRatio()
 
 def p(x,y):
    a=1
@@ -101,7 +102,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
           self.denoised, self.state= self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) * self.i
-          if self.count<160:
+          if self.count<80:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
@@ -162,9 +163,6 @@ def MultiSSIM(a,b,gpu_id):
     loss=MS_SSIM(data_range=1,size_average=False)
     return loss(d,e.unsqueeze(0)).cpu()
 
-
-
-
 import gym
 from gym import Env, spaces
 import numpy as np
@@ -177,7 +175,7 @@ class CustomEnv(gym.Env):
     self.sppps = env_config["sppps"]
     self.HEIGHT = 720 
     self.WIDTH =   720
-    self.max = int((self.spp)/self.sppps)*200
+    self.max = int((self.spp)/self.sppps)*100
     self.id = env_config.vector_index
     self.i = env_config["i"]
     self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
@@ -190,6 +188,17 @@ class CustomEnv(gym.Env):
     self.spec = Spec(self.max)
     self.top=0
     self.a=time.time()
+    self.mses = []
+    self.psnrs = []
+
+
+    with open('mses.txt', 'w') as fp:
+        fp.write("")
+    with open('psnrs.txt', 'w') as fp:
+        fp.write("")
+
+
+
   def step(self, action):
     self.simulation.new(self.simulation.count)
     old = self.simulation.out(self.simulation.render())
@@ -222,7 +231,8 @@ class CustomEnv(gym.Env):
          save(base,"images/baseline.png")
          self.insight()
 
-
+    self.mses.append(mean_squared_error(new,gd))
+    self.psnrs.append(psnr(new,gd))
 
     reward = 10**(new)
     done = self.spec.max_episode_steps <= self.simulation.count
@@ -243,13 +253,21 @@ class CustomEnv(gym.Env):
     save(img.astype(np.float32),"images/"+te+".png")
   def reset(self):
     print("res")
-    a=time.time()
     self.bool=False
     if random.random()<0.01:
       self.bool=True
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     temp ,_= self.simulation.observe()
-#    print(self.f(temp))
+
+    with open('mses.txt', 'a') as fp:
+        fp.write("\n".join(str(item) for item in self.mses))
+    with open('psnrs.txt', 'a') as fp:
+        fp.write("\n".join(str(item) for item in self.psnrs))
+
+
+    self.mses=[]
+    self.psnrs=[]
+
     return temp.numpy()
     
 def save(data,name):

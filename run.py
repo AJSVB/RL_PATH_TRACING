@@ -21,6 +21,8 @@ import math
 
 import numpy.random as tune
 
+
+
 def generate_partition():
     le = round(random.random()*10)
     l = []
@@ -78,6 +80,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5):
 
 #"sgd_minibatch_size":16,
 
+#"sample_async":True, TODO
 
 #"gamma":0,
 "normalize_actions":False,

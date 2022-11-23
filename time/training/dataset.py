@@ -103,8 +103,11 @@ class ValidationDataset(PreprocessedDataset):
 
   def translation(self,i,data):
    data = data.reshape(-1,720,720)
-   a=(i-1)//100
-   b=(i-1)%100
+   i=i-1
+   if i ==99:
+    i+=1
+   a=(i)//100 #TODO check
+   b=(i)%100
    warp_matrix = self.temp[a][b] 
    flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0).cuda(0),\
 (1,3,720,720), align_corners=True)
