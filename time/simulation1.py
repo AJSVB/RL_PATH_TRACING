@@ -34,6 +34,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.sppps = sppps
+        self.offset=0
         self.reset()
         self.shape=self.dataset.shape
         self.i = sel.i
@@ -51,8 +52,8 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 
 
     def new(self,i):
-        self.dataset = self.data.data(i)
-        self.add, self.gd = self.data.get(i)
+        self.dataset = self.data.data(i+self.offset)
+        self.add, self.gd = self.data.get(i+self.offset)
         self.add = torch.Tensor(self.add).permute(2,0,1).cuda(0) #necessary
         self.gd = torch.Tensor(self.gd).permute(2,0,1).cuda(0) #necessary
 
@@ -181,6 +182,7 @@ class CustomEnv(gym.Env):
     self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
     self.model=self.model.to("cuda:0")
     self.criterion = self.criterion.to("cuda:0")
+    self.offset=0
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH),))
     self.observation_space = spaces.Box(low=-1.0001, high=1, shape=
@@ -190,7 +192,6 @@ class CustomEnv(gym.Env):
     self.a=time.time()
     self.mses = []
     self.psnrs = []
-
 
     with open('mses.txt', 'w') as fp:
         fp.write("")
@@ -259,6 +260,8 @@ class CustomEnv(gym.Env):
     if random.random()<0.01:
       self.bool=True
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
+    self.offset+=5 
+    self.simulation.offset = int((self.offset//100)*100) %1000
     temp ,_= self.simulation.observe()
 
     with open('mses.txt', 'a') as fp:

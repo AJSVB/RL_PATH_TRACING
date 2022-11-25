@@ -89,7 +89,7 @@ class ValidationDataset(PreprocessedDataset):
     self.temp = [np.load("temp"+str(i)+".npy") for i in range(14)]
     sampling = torch.arange(8).reshape(8,1,1,1).cuda(0)
     self.sampling = sampling.repeat(1,1,720,720)
-    self.num_images=400
+    self.num_images=1000
 
      
   def __len__(self):
@@ -103,9 +103,6 @@ class ValidationDataset(PreprocessedDataset):
 
   def translation(self,i,data):
    data = data.reshape(-1,720,720)
-#   i=i+1
-   if i ==99:
-    i+=1
    a=(i)//100 #TODO check
    b=(i)%100
    warp_matrix = self.temp[a][b] 
