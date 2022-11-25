@@ -86,7 +86,9 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
         'num_workers':1, #8, TODO
 #"",
 "num_gpus":4,
-#"learner_queue_size":1,
+#"replay_proportion":.5,
+#"learner_queue_timeout":100,
+
 #"evaluation_num_workers":1,
 'num_cpus_per_worker':48,
 'num_gpus_per_worker':4,
