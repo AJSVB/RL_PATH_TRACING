@@ -169,4 +169,4 @@ class UNet(nn.Module):
     #torch.cuda.synchronize()         
     #print("decoder "+str(time.time()-a))
 
-    return torch.clip(sig(x)*1.01,0,1) ,input.squeeze(0)
+    return x ,input.squeeze(0)

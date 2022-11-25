@@ -29,7 +29,7 @@ import torchvision.transforms.functional as TF
 
 
 import functools
-@functools.cache
+@functools.lru_cache(maxsize=100)
 def get_ith_image(path,i,frame_number):
     image = Image.open(path+str(i).zfill(2) + "-" + str(frame_number).zfill(4)+'.png')
     #x = TF.to_tensor(image)
@@ -37,7 +37,7 @@ def get_ith_image(path,i,frame_number):
     return np.expand_dims(image,0)[:,:720,:720]/255.
 
 
-@functools.cache
+@functools.lru_cache(maxsize=100)
 def get_truth(path,frame_number):
     image= Image.open(path + "gd"+str(frame_number).zfill(4)+".png")
     #x = TF.to_tensor(image)
@@ -59,7 +59,7 @@ def get_add(a,b,c):
     else:
       return (z-b)/(a-b)*1.
 
-@functools.cache
+@functools.lru_cache(maxsize=100)
 def get_aux(path,frame_number):
     f=path + "add"
     end = str(frame_number).zfill(4)+".png"

@@ -163,6 +163,10 @@ def main_worker(rank, cfg):
     if distributed:
       train_sampler.set_epoch(epoch)
 
+    meanin = 0
+    meanout = 0
+    varin = 0
+    varout=0
     for i, batch in enumerate(train_loader, 0):
       # Get the batch
       input, target = batch
@@ -179,9 +183,20 @@ def main_worker(rank, cfg):
 
       # Run a training step
       optimizer.zero_grad()
-
+      print(input.shape)
       with amp.autocast(enabled=amp_enabled):
+
+        meanin = torch.mean(input)
+        varin = torch.var(input)
         output = model(input)
+        meanout = torch.mean(output)
+        varout = torch.var(output)
+        print(meanin)
+        print(varin)
+        print(meanout)
+        print(varout)
+
+
         loss = criterion(output, target)*10 #TODO
 
       if amp_enabled:

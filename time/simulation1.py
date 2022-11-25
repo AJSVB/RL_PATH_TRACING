@@ -217,8 +217,8 @@ class CustomEnv(gym.Env):
 
 
 
-    self.mses.append(mean_squared_error(new,gd))
-    self.psnrs.append(psnr(new,gd))
+    self.mses.append(mean_squared_error(new,gd).cpu())
+    self.psnrs.append(psnr(new,gd).cpu())
 
 
     old = MultiSSIM([old], [gd],i)[0]
@@ -262,9 +262,9 @@ class CustomEnv(gym.Env):
     temp ,_= self.simulation.observe()
 
     with open('mses.txt', 'a') as fp:
-        fp.write("\n".join(str(item) for item in self.mses))
+        fp.write("\n".join(str(item.item()) for item in self.mses))
     with open('psnrs.txt', 'a') as fp:
-        fp.write("\n".join(str(item) for item in self.psnrs))
+        fp.write("\n".join(str(item.item()) for item in self.psnrs))
 
 
     self.mses=[]

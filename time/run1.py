@@ -68,7 +68,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
             "kl_target": 5e-8,
             "lambda": .2,
             "clip_param": .15,
-            "lr": 1e-4, #tune.choice([1e-5,3e-5,1e-6,3e-6]) ,
+            "lr": 1e-3, #tune.choice([1e-5,3e-5,1e-6,3e-6]) ,
             "grad_clip": 4,
           #"momentum": tune.uniform(.5,1) ,
           #"epsilon": .3,
