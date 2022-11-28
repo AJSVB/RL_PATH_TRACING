@@ -49,8 +49,6 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.s = None
         self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
 
-
-
     def new(self,i):
         self.dataset = self.data.data(i+self.offset)
         self.add, self.gd = self.data.get(i+self.offset)
@@ -83,10 +81,10 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
             print(s.cpu())
             print(torch.sum(s).cpu())
         s[s<0]=-1
-        s[s>7] = 7
+        s[s>8] = 8
         self.s=s
         a=time.time()
-        self.observations = self.data.generate(self.dataset,s,self.count)
+        self.observations = self.data.generate(self.dataset,s,self.count) # TODO - this I think :)
         self.count+=1
         self.updated=False
 
@@ -103,7 +101,8 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
           self.denoised, self.state= self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) * self.i 
-          if self.count<80:
+
+          if self.offset<900:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
@@ -176,7 +175,10 @@ class CustomEnv(gym.Env):
     self.sppps = env_config["sppps"]
     self.HEIGHT = 720 
     self.WIDTH =   720
-    self.max = int((self.spp)/self.sppps)*100
+
+    self.max = 100 
+
+
     self.id = env_config.vector_index
     self.i = env_config["i"]
     self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
@@ -194,9 +196,9 @@ class CustomEnv(gym.Env):
     self.psnrs = []
 
     with open('mses.txt', 'w') as fp:
-        fp.write("")
+        fp.write("\n")
     with open('psnrs.txt', 'w') as fp:
-        fp.write("")
+        fp.write("\n")
 
 
 
@@ -209,35 +211,22 @@ class CustomEnv(gym.Env):
     new = self.simulation.out(self.simulation.render())
     base = self.simulation.dataset[:4].mean(0)
     baseline = MultiSSIM([base],[gd],i)[0]
+    old1 = MultiSSIM([old], [gd],i)[0]
+    new1 = MultiSSIM([new], [gd],i)[0]
+    if self.bool and self.simulation.count==1:
+     self.bool = new1>self.top
+     self.top = new1
 
     if self.bool:
      te = str(self.simulation.count)
      save(base.cpu(),"images/base"+te+".png")
      save(new.cpu(),"images/new"+te+".png")
      save(gd.cpu(),"images/gd"+te+".png")
+  
+     self.mses.append(mean_squared_error(new,gd).cpu())
+     self.psnrs.append(psnr(new,gd).cpu())
 
-
-
-    self.mses.append(mean_squared_error(new,gd).cpu())
-    self.psnrs.append(psnr(new,gd).cpu())
-
-
-    old = MultiSSIM([old], [gd],i)[0]
-    new = MultiSSIM([new], [gd],i)[0]
-    if  False and self.top<new:
-        print("baseline " + str(baseline.item()))
-        print("new "+str(new.item()))
-        print("denoiser "+str(self.simulation.loss.detach().cpu().item()))
-        print("time "+ str(time.time()-a))
-        print(self.simulation.count)
-        print()
-        self.top = new
-        if self.top>.95:
-         save(base,"images/baseline.png")
-         self.insight()
-
-
-    reward = 10**(new)
+    reward = 10**(new1)
     done = self.spec.max_episode_steps <= self.simulation.count
     return observation.numpy(),reward.detach().numpy(),done,{}
  
@@ -257,18 +246,21 @@ class CustomEnv(gym.Env):
   def reset(self):
     print("res")
     self.bool=False
-    if random.random()<0.01:
+    if self.offset%1000 > 900 :
       self.bool=True
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     self.offset+=5 
     self.simulation.offset = int((self.offset//100)*100) %1000
     temp ,_= self.simulation.observe()
 
-    with open('mses.txt', 'a') as fp:
-        fp.write("\n".join(str(item.item()) for item in self.mses))
-    with open('psnrs.txt', 'a') as fp:
-        fp.write("\n".join(str(item.item()) for item in self.psnrs))
 
+    if self.bool:
+     with open('mses.txt', 'a') as fp:
+         fp.write("\n".join(str(item.item()) for item in self.mses))
+         fp.write("\n")
+     with open('psnrs.txt', 'a') as fp:
+         fp.write("\n".join(str(item.item()) for item in self.psnrs))
+         fp.write("\n")
 
     self.mses=[]
     self.psnrs=[]

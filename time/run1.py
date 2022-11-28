@@ -32,7 +32,7 @@ def generate_partition():
 
 
 def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
-    spp=int(spp)
+    spp=float(spp)
     c = int(c)
     sppps = float(sppps)
     a = time.time()
@@ -58,9 +58,6 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
  # "use_critic": False,  "use_gae": True,   "use_kl_loss": True,  
 #   "vf_loss_coeff": 0.3323018458897308,
    "optimizer": "adabelief", 
-
-
-
             "use_critic":True,
             "use_gae":True,
             "use_kl_loss":True,
@@ -92,7 +89,6 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
 #"evaluation_num_workers":1,
 'num_cpus_per_worker':48,
 'num_gpus_per_worker':4,
-#"evaluation_interval":10,
 "rollout_fragment_length":4, 
   "model":{
    "custom_model":"UN",
@@ -106,7 +102,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
 })
     # Train for one iteration.
     from ray.air import session
-    for _ in range(10000):
+    for _ in range(2500):
          a = algo.train()
     # Save state of the trained Algorithm in a checkpoint.
    # algo.save("/tmp/rllib_checkpoint")

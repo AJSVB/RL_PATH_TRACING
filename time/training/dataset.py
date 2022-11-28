@@ -87,9 +87,9 @@ class ValidationDataset(PreprocessedDataset):
 
     self.path = "/home/ascardigli/blender-3.2.2-linux-x64/suntemple/"
     self.temp = [np.load("temp"+str(i)+".npy") for i in range(14)]
-    sampling = torch.arange(8).reshape(8,1,1,1).cuda(0)
+    sampling = torch.arange(1,9).reshape(8,1,1,1).cuda(0)
     self.sampling = sampling.repeat(1,1,720,720)
-    self.num_images=1000
+    self.num_images=1100
 
      
   def __len__(self):
@@ -116,9 +116,22 @@ flow,align_corners=True)
 
   def generate(self,samples,idxs,i):
     samples = torch.cat([samples,-1*torch.ones((1,3,720,720)).cuda(0)],0)
-    idxs= idxs.reshape(1,720,720)
-    sampling = self.sampling - idxs
+    idxs= idxs.reshape(1,720,720) 
+    sampling = idxs - self.sampling 
     sampling[sampling<0] = 8
+    """
+    def p(a,b):
+      print( a+" "+str(b.item()))
+    p("0",torch.sum(sampling==0))
+    p("1",torch.sum(sampling==1))
+    p("2",torch.sum(sampling==2))
+    p("3",torch.sum(sampling==3))
+    p("4",torch.sum(sampling==4))
+    p("5",torch.sum(sampling==5))
+    p("6",torch.sum(sampling==6))
+    p("7",torch.sum(sampling==7))
+    p("8",torch.sum(sampling==8))
+    """
     sampling = sampling.repeat(1,3,1,1)
     temp = torch.take_along_dim(samples,sampling,dim=0)
 

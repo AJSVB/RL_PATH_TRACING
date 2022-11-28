@@ -191,10 +191,10 @@ def main_worker(rank, cfg):
         output = model(input)
         meanout = torch.mean(output)
         varout = torch.var(output)
-        print(meanin)
-        print(varin)
-        print(meanout)
-        print(varout)
+        print("meanin  " + str(meanin.item()))
+        print("varin   " + str(varin.item()))
+        print("meanout " + str(meanout.item()))
+        print("varout  " + str(varout.item()))
 
 
         loss = criterion(output, target)*10 #TODO
