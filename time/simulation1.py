@@ -38,6 +38,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.reset()
         self.shape=self.dataset.shape
         self.i = sel.i
+        self.number = 1200
 
     def reset(self):
         self.observations = -1 * torch.ones([8,3,self.HEIGHT,self.WIDTH])
@@ -102,7 +103,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           self.denoised, self.state= self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) * self.i 
 
-          if self.offset<900:
+          if self.offset<800 or self.offset>=900:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
@@ -195,9 +196,9 @@ class CustomEnv(gym.Env):
     self.mses = []
     self.psnrs = []
 
-    with open('mses.txt', 'w') as fp:
+    with open(str(self.spp)+'mses.txt', 'w') as fp:
         fp.write("\n")
-    with open('psnrs.txt', 'w') as fp:
+    with open(str(self.spp)+'psnrs.txt', 'w') as fp:
         fp.write("\n")
 
 
@@ -246,19 +247,19 @@ class CustomEnv(gym.Env):
   def reset(self):
     print("res")
     self.bool=False
-    if self.offset%1000 > 900 :
+    if self.offset%self.simulation.number >= 800 and self.offset%self.simulation.number<900 :
       self.bool=True
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
     self.offset+=5 
-    self.simulation.offset = int((self.offset//100)*100) %1000
+    self.simulation.offset = int((self.offset//100)*100) %self.simulation.number
     temp ,_= self.simulation.observe()
 
 
     if self.bool:
-     with open('mses.txt', 'a') as fp:
+     with open(str(self.spp)+'mses.txt', 'a') as fp:
          fp.write("\n".join(str(item.item()) for item in self.mses))
          fp.write("\n")
-     with open('psnrs.txt', 'a') as fp:
+     with open(str(self.spp)+'psnrs.txt', 'a') as fp:
          fp.write("\n".join(str(item.item()) for item in self.psnrs))
          fp.write("\n")
 

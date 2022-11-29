@@ -89,7 +89,7 @@ class ValidationDataset(PreprocessedDataset):
     self.temp = [np.load("temp"+str(i)+".npy") for i in range(14)]
     sampling = torch.arange(1,9).reshape(8,1,1,1).cuda(0)
     self.sampling = sampling.repeat(1,1,720,720)
-    self.num_images=1100
+    self.num_images=1400
 
      
   def __len__(self):
