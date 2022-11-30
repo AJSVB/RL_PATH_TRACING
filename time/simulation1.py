@@ -24,6 +24,7 @@ def p(x,y):
    a=1
 #   print(x+str(y))
 
+#L1 = torch.nn.L1Loss()
 
 class PhysicSimulation:
 
@@ -103,7 +104,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           self.denoised, self.state= self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) * self.i 
 
-          if self.offset<800 or self.offset>=900:
+          if True: #self.offset<800 or self.offset>=900:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
@@ -214,15 +215,23 @@ class CustomEnv(gym.Env):
     baseline = MultiSSIM([base],[gd],i)[0]
     old1 = MultiSSIM([old], [gd],i)[0]
     new1 = MultiSSIM([new], [gd],i)[0]
+
+#    baseline = -L1(base,gd).cpu()
+#    old1 = -L1(old, gd).cpu()
+#    new1 = -L1(new, gd).cpu()
+
+
+
     if self.bool and self.simulation.count==1:
      self.bool = new1>self.top
-     self.top = new1
+     if self.bool:
+       self.top = new1
 
     if self.bool:
      te = str(self.simulation.count)
-     save(base.cpu(),"images/base"+te+".png")
-     save(new.cpu(),"images/new"+te+".png")
-     save(gd.cpu(),"images/gd"+te+".png")
+     save(base.cpu(),"images/"+str(self.spp)+"base"+te+".png")
+     save(new.cpu(),"images/"+str(self.spp)+"new"+te+".png")
+     save(gd.cpu(),"images/"+str(self.spp)+"gd"+te+".png")
   
      self.mses.append(mean_squared_error(new,gd).cpu())
      self.psnrs.append(psnr(new,gd).cpu())
