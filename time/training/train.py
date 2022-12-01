@@ -33,6 +33,12 @@ def main_worker():
   result_dir = get_result_dir(cfg)
   resume = os.path.isdir(result_dir)
 
+  def init_weights(m):
+    if isinstance(m, nn.Linear):
+        torch.nn.init.xavier_uniform(m.weight)
+        m.bias.data.fill_(0.01)
+  model.apply(init_weights)
+
   lr_scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
     max_lr=cfg.max_lr,

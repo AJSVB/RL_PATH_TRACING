@@ -37,6 +37,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.sppps = sppps
         self.offset=0
         self.reset()
+        self.new(0)
         self.shape=self.dataset.shape
         self.i = sel.i
         self.number = 1200
@@ -47,15 +48,16 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.denoised = torch.zeros([1,3,self.HEIGHT,self.WIDTH]).cuda(0)
         self.count=0
         self.loss=0
-        self.new(0)
         self.s = None
         self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
 
     def new(self,i):
+        print(self.offset)
         self.dataset = self.data.data(i+self.offset)
         self.add, self.gd = self.data.get(i+self.offset)
         self.add = torch.Tensor(self.add).permute(2,0,1).cuda(0) #necessary
         self.gd = torch.Tensor(self.gd).permute(2,0,1).cuda(0) #necessary
+
 
     def round_retain_sum(self,x,N):
      N = np.round(N).astype(int)
@@ -86,7 +88,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         s[s>8] = 8
         self.s=s
         a=time.time()
-        self.observations = self.data.generate(self.dataset,s,self.count) # TODO - this I think :)
+        self.observations = self.data.generate(self.dataset,s,self.count) 
         self.count+=1
         self.updated=False
 
@@ -178,7 +180,7 @@ class CustomEnv(gym.Env):
     self.HEIGHT = 720 
     self.WIDTH =   720
 
-    self.max = 100 
+    self.max = 20
 
 
     self.id = env_config.vector_index
@@ -222,13 +224,13 @@ class CustomEnv(gym.Env):
 
 
 
-    if self.bool and self.simulation.count==1:
-     self.bool = new1>self.top
-     if self.bool:
-       self.top = new1
-
+#    if self.bool and self.simulation.count==1:
+#     self.bool = new1>self.top
+#     if self.bool:
+#       self.top = new1
     if self.bool:
-     te = str(self.simulation.count)
+     te = str((self.simulation.offset%100)+self.simulation.count)
+     print(te)
      save(base.cpu(),"images/"+str(self.spp)+"base"+te+".png")
      save(new.cpu(),"images/"+str(self.spp)+"new"+te+".png")
      save(gd.cpu(),"images/"+str(self.spp)+"gd"+te+".png")
@@ -256,11 +258,11 @@ class CustomEnv(gym.Env):
   def reset(self):
     print("res")
     self.bool=False
-    if self.offset%self.simulation.number >= 800 and self.offset%self.simulation.number<900 :
+    self.offset+=5 
+    if self.offset%self.simulation.number >= 800 and self.offset%self.simulation.number<900 : #was between 800 and 900
       self.bool=True
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
-    self.offset+=5 
-    self.simulation.offset = int((self.offset//100)*100) %self.simulation.number
+    self.simulation.offset = int((self.offset//20)*20) %self.simulation.number
     temp ,_= self.simulation.observe()
 
 
