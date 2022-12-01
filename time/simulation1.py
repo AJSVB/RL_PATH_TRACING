@@ -52,7 +52,6 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
 
     def new(self,i):
-        print(self.offset)
         self.dataset = self.data.data(i+self.offset)
         self.add, self.gd = self.data.get(i+self.offset)
         self.add = torch.Tensor(self.add).permute(2,0,1).cuda(0) #necessary
@@ -230,7 +229,6 @@ class CustomEnv(gym.Env):
 #       self.top = new1
     if self.bool:
      te = str((self.simulation.offset%100)+self.simulation.count)
-     print(te)
      save(base.cpu(),"images/"+str(self.spp)+"base"+te+".png")
      save(new.cpu(),"images/"+str(self.spp)+"new"+te+".png")
      save(gd.cpu(),"images/"+str(self.spp)+"gd"+te+".png")
