@@ -115,6 +115,7 @@ flow,align_corners=True)
 
 
   def generate(self,samples,idxs,i):
+    samples = samples[torch.randperm(8)]
     samples = torch.cat([samples,-1*torch.ones((1,3,720,720)).cuda(0)],0)
     idxs= idxs.reshape(1,720,720) 
     sampling = idxs - self.sampling 

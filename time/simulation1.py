@@ -1,3 +1,4 @@
+
 import math
 import torchvision
 import torchvision.transforms as transforms
@@ -26,6 +27,43 @@ def p(x,y):
 
 #L1 = torch.nn.L1Loss()
 
+import random
+from torchvision.transforms import *
+
+from torchvision.transforms import functional as F
+
+size=(720,720)
+scale=(0.08, 1.0)
+ratio=(3.0 / 4.0, 4.0 / 3.0)
+interpolation=InterpolationMode.BILINEAR
+
+def get_params():
+        height, width = 720,720 
+        area = height * width
+        log_ratio = torch.log(torch.tensor(ratio))
+        for _ in range(10):
+            target_area = area * torch.empty(1).uniform_(scale[0], scale[1]).item()
+            aspect_ratio = torch.exp(torch.empty(1).uniform_(log_ratio[0], log_ratio[1])).item()
+            w = int(round(math.sqrt(target_area * aspect_ratio)))
+            h = int(round(math.sqrt(target_area / aspect_ratio)))
+            if 0 < w <= width and 0 < h <= height:
+                i = torch.randint(0, height - h + 1, size=(1,)).item()
+                j = torch.randint(0, width - w + 1, size=(1,)).item()
+                return i, j, h, w
+        in_ratio = float(width) / float(height)
+        if in_ratio < min(ratio):
+            w = width
+            h = int(round(w / min(ratio)))
+        elif in_ratio > max(ratio):
+            h = height
+            w = int(round(h * max(ratio)))
+        else:  # whole image
+            w = width
+            h = height
+        i = (height - h) // 2
+        j = (width - w) // 2
+        return i, j, h, w
+
 class PhysicSimulation:
 
     def __init__(self,spp, sppps=.1,HEIGHT=480,WIDTH=730,sel=None):
@@ -37,10 +75,13 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.sppps = sppps
         self.offset=0
         self.reset()
+        if self.inval():
+          self.transform = lambda x:x
         self.new(0)
         self.shape=self.dataset.shape
         self.i = sel.i
         self.number = 1200
+
 
     def reset(self):
         self.observations = -1 * torch.ones([8,3,self.HEIGHT,self.WIDTH])
@@ -50,12 +91,23 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.loss=0
         self.s = None
         self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
+        lis = []
+        if random.random()>.5:
+         lis.append(T.functional.hflip)
+        if random.random()>.5:
+         lis.append(T.functional.vflip)
+        if random.random()>.5:
+         i, j, h, w = get_params()
+         lis.append(lambda x: F.resized_crop(x, i, j, h, w,size, interpolation))
+        self.transform = T.Compose(lis)
+
+
 
     def new(self,i):
-        self.dataset = self.data.data(i+self.offset)
+        self.dataset = self.transform(self.data.data(i+self.offset))
         self.add, self.gd = self.data.get(i+self.offset)
-        self.add = torch.Tensor(self.add).permute(2,0,1).cuda(0) #necessary
-        self.gd = torch.Tensor(self.gd).permute(2,0,1).cuda(0) #necessary
+        self.add = self.transform(torch.Tensor(self.add).permute(2,0,1).cuda(0)) #necessary
+        self.gd = self.transform(torch.Tensor(self.gd).permute(2,0,1).cuda(0)) #necessary
 
 
     def round_retain_sum(self,x,N):
@@ -90,6 +142,9 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.observations = self.data.generate(self.dataset,s,self.count) 
         self.count+=1
         self.updated=False
+
+    def inval(self):
+      return self.offset>=800 and self.offset<900
 
     def out(self,data):
         return data.reshape(-1, self.HEIGHT,self.WIDTH)
@@ -229,6 +284,7 @@ class CustomEnv(gym.Env):
 #       self.top = new1
     if self.bool:
      te = str((self.simulation.offset%100)+self.simulation.count)
+     print(te)
      save(base.cpu(),"images/"+str(self.spp)+"base"+te+".png")
      save(new.cpu(),"images/"+str(self.spp)+"new"+te+".png")
      save(gd.cpu(),"images/"+str(self.spp)+"gd"+te+".png")

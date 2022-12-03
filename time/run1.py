@@ -102,7 +102,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
 })
     # Train for one iteration.
     from ray.air import session
-    for _ in range(500): #Was 2000
+    for _ in range(5000): #Was 2000
          a = algo.train()
     # Save state of the trained Algorithm in a checkpoint.
    # algo.save("/tmp/rllib_checkpoint")
