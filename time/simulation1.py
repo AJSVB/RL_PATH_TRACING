@@ -138,8 +138,8 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         s[s<0]=-1
         s[s>8] = 8
         self.s=s
-        a=time.time()
-        self.observations = self.data.generate(self.dataset,s,self.count) 
+        print(self.count)
+        self.observations = self.data.generate(self.dataset,s,self.count+self.i) 
         self.count+=1
         self.updated=False
 
@@ -158,7 +158,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           m3=self.state
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
           self.denoised, self.state= self.model(input)
-          loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) * self.i 
+          loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) 
           temp = loss
           if self.oldgd is not None:
             loss+=self.criterion(self.denoised-self.olddenoised,self.gd.unsqueeze(0)-self.olddenoised)
@@ -186,7 +186,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
            plt.savefig("images/hitmap.png")
 
       self.updated=True
-      self.loss=temp
+      self.loss=temp.detach().cpu()
       return self.denoised
 
 

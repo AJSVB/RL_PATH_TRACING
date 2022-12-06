@@ -103,7 +103,6 @@ class ValidationDataset(PreprocessedDataset):
 
   def translation(self,i,data):
    data = data.reshape(-1,720,720)
-   i+=1
    a=(i)//100 #TODO check
    b=(i)%100
    warp_matrix = self.temp[a][b] 
