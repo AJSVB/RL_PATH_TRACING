@@ -29,6 +29,8 @@ def main_worker():
   cfg = parse_args(description='Trains a model using preprocessed datasets.')
   model = get_model(cfg)
   criterion = get_loss_function(cfg)
+  criterion =  torch.nn.L1Loss()
+
   optimizer = optim.Adam(model.parameters(), lr=1)
   result_dir = get_result_dir(cfg)
   resume = os.path.isdir(result_dir)

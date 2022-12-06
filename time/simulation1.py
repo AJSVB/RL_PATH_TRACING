@@ -66,22 +66,19 @@ def get_params():
 
 class PhysicSimulation:
 
-    def __init__(self,spp, sppps=.1,HEIGHT=480,WIDTH=730,sel=None):
-
+    def __init__(self,spp, sppps=.1,HEIGHT=480,WIDTH=730,sel=None,offset=0):
         self.model,self.data,self.criterion,self.optimizer,self.scheduler = \
 sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.sppps = sppps
-        self.offset=0
+        self.number = 1200
+        self.offset = offset
         self.reset()
-        if self.inval():
-          self.transform = lambda x:x
         self.new(0)
         self.shape=self.dataset.shape
         self.i = sel.i
-        self.number = 1200
-
+        self.loss=0
 
     def reset(self):
         self.observations = -1 * torch.ones([8,3,self.HEIGHT,self.WIDTH])
@@ -99,8 +96,11 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         if random.random()>.5:
          i, j, h, w = get_params()
          lis.append(lambda x: F.resized_crop(x, i, j, h, w,size, interpolation))
+        if self.inval():
+         lis=[]
         self.transform = T.Compose(lis)
-
+        self.oldgd=None
+        self.olddenoised=None
 
 
     def new(self,i):
@@ -159,14 +159,17 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
           self.denoised, self.state= self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) * self.i 
-
-          if True: #self.offset<800 or self.offset>=900:
+          temp = loss
+          if self.oldgd is not None:
+            loss+=self.criterion(self.denoised-self.olddenoised,self.gd.unsqueeze(0)-self.olddenoised)
+          if not self.inval(): #self.offset<800 or self.offset>=900:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
           self.denoised = torch.clip(self.denoised.detach(),0,1)
           self.state = self.state.detach()
-
+          self.oldgd=self.gd
+          self.olddenoised=self.denoised
           if random.random()<1e-4:
            input=input[0].detach().cpu()
            for i in range(len(input)):
@@ -182,9 +185,8 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
            plt.imshow(self.s.detach().cpu().reshape(720,720))
            plt.savefig("images/hitmap.png")
 
-
-
       self.updated=True
+      self.loss=temp
       return self.denoised
 
 
@@ -243,7 +245,7 @@ class CustomEnv(gym.Env):
     self.model=self.model.to("cuda:0")
     self.criterion = self.criterion.to("cuda:0")
     self.offset=0
-    self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
+    self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self,self.offset)
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH),))
     self.observation_space = spaces.Box(low=-1.0001, high=1, shape=
                     (41,int(self.HEIGHT),int(self.WIDTH)), dtype=np.float32) #MACHINE PRECISION
@@ -253,24 +255,26 @@ class CustomEnv(gym.Env):
     self.mses = []
     self.psnrs = []
 
-    with open(str(self.spp)+'mses.txt', 'w') as fp:
+    with open("images/"+str(self.spp)+'mses.txt', 'w') as fp:
         fp.write("\n")
-    with open(str(self.spp)+'psnrs.txt', 'w') as fp:
+    with open("images/"+str(self.spp)+'psnrs.txt', 'w') as fp:
         fp.write("\n")
 
 
 
   def step(self, action):
     self.simulation.new(self.simulation.count)
-    old = self.simulation.out(self.simulation.render())
-    i=-0 #works with 0 outside of tune.py TODO
+ #   old = self.simulation.out(self.simulation.render())
+  #  i=-0 #works with 0 outside of tune.py TODO
     self.simulation.simulate(action)
     observation,gd = self.simulation.observe()
     new = self.simulation.out(self.simulation.render())
-    base = self.simulation.dataset[:4].mean(0)
-    baseline = MultiSSIM([base],[gd],i)[0]
-    old1 = MultiSSIM([old], [gd],i)[0]
-    new1 = MultiSSIM([new], [gd],i)[0]
+    loss= self.simulation.loss
+   # base = self.simulation.dataset[:4].mean(0)
+    new1=1-loss
+#    baseline = MultiSSIM([base],[gd],i)[0]
+#    old1 = MultiSSIM([old], [gd],i)[0]
+#    new1 = MultiSSIM([new], [gd],i)[0]
 
 #    baseline = -L1(base,gd).cpu()
 #    old1 = -L1(old, gd).cpu()
@@ -278,16 +282,16 @@ class CustomEnv(gym.Env):
 
 
 
-#    if self.bool and self.simulation.count==1:
-#     self.bool = new1>self.top
-#     if self.bool:
-#       self.top = new1
+    if self.bool and self.simulation.count==1:
+     self.bool = new1>self.top
+     if self.bool:
+       self.top = new1
     if self.bool:
      te = str((self.simulation.offset%100)+self.simulation.count)
      print(te)
-     save(base.cpu(),"images/"+str(self.spp)+"base"+te+".png")
+#     save(base.cpu(),"images/"+str(self.spp)+"base"+te+".png")
      save(new.cpu(),"images/"+str(self.spp)+"new"+te+".png")
-     save(gd.cpu(),"images/"+str(self.spp)+"gd"+te+".png")
+#     save(gd.cpu(),"images/"+str(self.spp)+"gd"+te+".png")
   
      self.mses.append(mean_squared_error(new,gd).cpu())
      self.psnrs.append(psnr(new,gd).cpu())
@@ -310,21 +314,19 @@ class CustomEnv(gym.Env):
     te=str(self.top.item())
     save(img.astype(np.float32),"images/"+te+".png")
   def reset(self):
-    print("res")
     self.bool=False
     self.offset+=5 
     if self.offset%self.simulation.number >= 800 and self.offset%self.simulation.number<900 : #was between 800 and 900
       self.bool=True
-    self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self)
-    self.simulation.offset = int((self.offset//20)*20) %self.simulation.number
+    self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self,int((self.offset//20)*20) %self.simulation.number)
     temp ,_= self.simulation.observe()
 
 
     if self.bool:
-     with open(str(self.spp)+'mses.txt', 'a') as fp:
+     with open("images/"+str(self.spp)+'mses.txt', 'a') as fp:
          fp.write("\n".join(str(item.item()) for item in self.mses))
          fp.write("\n")
-     with open(str(self.spp)+'psnrs.txt', 'a') as fp:
+     with open("images/"+str(self.spp)+'psnrs.txt', 'a') as fp:
          fp.write("\n".join(str(item.item()) for item in self.psnrs))
          fp.write("\n")
 
