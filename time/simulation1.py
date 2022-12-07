@@ -138,8 +138,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         s[s<0]=-1
         s[s>8] = 8
         self.s=s
-        print(self.count)
-        self.observations = self.data.generate(self.dataset,s,self.count+self.i) 
+        self.observations = self.data.generate(self.dataset,s,self.count) 
         self.count+=1
         self.updated=False
 
@@ -151,17 +150,17 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 
     def render(self):        
       if not self.updated:
-          a=time.time()
           self.optimizer.zero_grad()
           m1=self.observations.reshape(-1,*self.shape[-2:])
           m2=self.add
           m3=self.state
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
-          self.denoised, self.state= self.model(input)
-          loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) 
-          temp = loss
-          if self.oldgd is not None:
-            loss+=self.criterion(self.denoised-self.olddenoised,self.gd.unsqueeze(0)-self.olddenoised)
+          with torch.cuda.amp.autocast():
+           self.denoised, self.state= self.model(input)
+           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) 
+           temp = loss
+           if self.oldgd is not None:
+             loss+=self.criterion(self.denoised-self.olddenoised,self.gd.unsqueeze(0)-self.olddenoised)
           if not self.inval(): #self.offset<800 or self.offset>=900:
             loss.backward()
             self.optimizer.step()
@@ -179,7 +178,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
            plt.imshow(self.gd.permute(1,2,0).detach().cpu())
            plt.savefig("images/target.png")
            plt.clf()
-           plt.imshow(self.denoised[0].permute(1,2,0).detach().cpu())
+           plt.imshow(self.denoised[0].to(torch.float).permute(1,2,0).detach().cpu())
            plt.savefig("images/out.png")
            plt.clf()
            plt.imshow(self.s.detach().cpu().reshape(720,720))
@@ -191,8 +190,9 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 
 
     def observe(self):
-        if self.count >1:
-            self.state = self.data.translation(self.count-1,self.state)
+        self.state = self.state.to(torch.float)
+        if self.count+self.i >=0:
+            self.state = self.data.translation(self.count+self.i,self.state) #TODO
         m2=self.add
         m3=self.state.detach()
         input= torch.cat((m2,m3),0)

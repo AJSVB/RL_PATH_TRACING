@@ -62,19 +62,19 @@ def concat(a, b):
 class UNet(nn.Module):
   def __init__(self, in_channels=3, out_channels=3):
     super(UNet, self).__init__()
-
+    d=1
     # Number of channels per layer
     ic   = 32
     ec1  = 32
-    ec2  = 48//2
-    ec3  = 64//2
-    ec4  = 80//2
-    ec5  = 96//2
-    dc4  = 112//2
-    dc3  = 96//2
-    dc2  = 64//2
-    dc1a = 64//2
-    dc1b = 32//2
+    ec2  = 48//d
+    ec3  = 64//d
+    ec4  = 80//d
+    ec5  = 96//d
+    dc4  = 112//d
+    dc3  = 96//d
+    dc2  = 64//d
+    dc1a = 64//d
+    dc1b = 32//d
     oc   = out_channels
 
     # Convolutions
@@ -100,7 +100,7 @@ class UNet(nn.Module):
     self.dec_conv0  = Conv(dc1b,    oc)
 
 
-    nb = 32
+    nb = 64
     self.a=Conv(in_channels+ic,nb)
     self.a1=SimpleConv(nb,nb)
     self.b=Conv(nb,nb)

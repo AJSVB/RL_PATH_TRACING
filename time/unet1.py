@@ -146,7 +146,7 @@ class UN(TorchModelV2, nn.Module):
         state: List[TensorType],
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
-         x = input_dict["obs"].type(torch.float32)
+         x = input_dict["obs"]
          x = self._convs(x)
          self.tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
          o=self.head(x)
@@ -160,15 +160,21 @@ class UN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
       import time
+#      input_dict,state,seq_lens = input_dict.to(torch.half),state,seq_lens
+      a=time.time()
+#      with torch.cuda.amp.autocast():
       out=self.f(input_dict,state,seq_lens)
       out=out.reshape(out.shape[0],-1)
       temp =  torch.nn.Tanh()(out)*20-10
-      return temp, state
+  #    torch.cuda.synchronize()
+ #     print(time.time()-a)
+ 
+      return temp.to(torch.float), state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:
         assert self.tmp is not None, "must call forward() first"
-        return self.tmp
+        return self.tmp.to(torch.float)
 
 
 from ray.rllib.models import ModelCatalog
