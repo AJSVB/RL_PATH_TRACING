@@ -7,6 +7,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
+import matplotlib.pyplot as plt
 
 
 from .image import *
@@ -101,13 +102,16 @@ class ValidationDataset(PreprocessedDataset):
     return samples.permute(0,3,1,2)
 
 
-  def translation(self,i,data):
+  def translation(self,i,data,transform):
    data = data.reshape(-1,720,720)
    a=(i)//100 #TODO check
    b=(i)%100
    warp_matrix = self.temp[a][b] 
    flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0).cuda(0),\
 (1,3,720,720), align_corners=True)
+
+   flow = transform(flow)
+ 
    temp= torch.nn.functional.grid_sample(.1+data.unsqueeze(0),\
 flow,align_corners=True) 
    temp[temp==0]=-.9 #TODO

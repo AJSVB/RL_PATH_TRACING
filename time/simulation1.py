@@ -27,6 +27,8 @@ def p(x,y):
 
 #L1 = torch.nn.L1Loss()
 
+list = []
+
 import random
 from torchvision.transforms import *
 
@@ -79,6 +81,8 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.shape=self.dataset.shape
         self.i = sel.i
         self.loss=0
+        self.x=1
+        self.y=1
 
     def reset(self):
         self.observations = -1 * torch.ones([8,3,self.HEIGHT,self.WIDTH])
@@ -89,25 +93,27 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.s = None
         self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
         lis = []
+        self.perm = lambda x:x
         if random.random()>.5:
          lis.append(T.functional.hflip)
+         self.x=-1
         if random.random()>.5:
          lis.append(T.functional.vflip)
-        if random.random()>.5:
+         self.y=-1
+        if random.random()>1:
          i, j, h, w = get_params()
-         lis.append(lambda x: F.resized_crop(x, i, j, h, w,size, interpolation))
+         self.perm = lambda x: F.resized_crop(x, i, j, h, w,size, interpolation)
         if self.inval():
          lis=[]
         self.transform = T.Compose(lis)
         self.oldgd=None
         self.olddenoised=None
 
-
     def new(self,i):
-        self.dataset = self.transform(self.data.data(i+self.offset))
+        self.dataset = self.perm(self.transform(self.data.data(i+self.offset)))
         self.add, self.gd = self.data.get(i+self.offset)
-        self.add = self.transform(torch.Tensor(self.add).permute(2,0,1).cuda(0)) #necessary
-        self.gd = self.transform(torch.Tensor(self.gd).permute(2,0,1).cuda(0)) #necessary
+        self.add = self.perm(self.transform(torch.Tensor(self.add).permute(2,0,1).cuda(0))) #necessary
+        self.gd = self.perm(self.transform(torch.Tensor(self.gd).permute(2,0,1).cuda(0))) #necessary
 
 
     def round_retain_sum(self,x,N):
@@ -155,12 +161,12 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           m2=self.add
           m3=self.state
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
-          with torch.cuda.amp.autocast():
-           self.denoised, self.state= self.model(input)
-           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) 
-           temp = loss
-           if self.oldgd is not None:
-             loss+=self.criterion(self.denoised-self.olddenoised,self.gd.unsqueeze(0)-self.olddenoised)
+#          with torch.cuda.amp.autocast():
+          self.denoised, self.state= self.model(input)
+          loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) 
+          temp = loss
+          if self.oldgd is not None:
+            loss+=self.criterion(self.denoised-self.olddenoised,self.gd.unsqueeze(0)-self.olddenoised)
           if not self.inval(): #self.offset<800 or self.offset>=900:
             loss.backward()
             self.optimizer.step()
@@ -169,20 +175,26 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           self.state = self.state.detach()
           self.oldgd=self.gd
           self.olddenoised=self.denoised
-          if random.random()<1e-4:
-           input=input[0].detach().cpu()
-           for i in range(len(input)):
-            plt.imshow(input[i])
-            plt.savefig("images/"+str(i)+".png")
-            plt.clf()
+          if random.random()<.01:
+           t = str(self.offset+self.count-1)
+#           print(t)
+           plt.imshow(m1.cpu().mean(0))
+           plt.savefig("images/"+t+"obs.png")
+           plt.clf()
+           plt.imshow(m2.cpu().mean(0))
+           plt.savefig("images/"+t+"add.png")
+           plt.clf()
+           plt.imshow(m3.cpu().mean(0))
+           plt.savefig("images/"+t+"stt.png")
+           plt.clf()
            plt.imshow(self.gd.permute(1,2,0).detach().cpu())
-           plt.savefig("images/target.png")
+           plt.savefig("images/"+t+"target.png")
            plt.clf()
            plt.imshow(self.denoised[0].to(torch.float).permute(1,2,0).detach().cpu())
-           plt.savefig("images/out.png")
+           plt.savefig("images/"+t+"out.png")
            plt.clf()
            plt.imshow(self.s.detach().cpu().reshape(720,720))
-           plt.savefig("images/hitmap.png")
+           plt.savefig("images/"+t+"hitmap.png")
 
       self.updated=True
       self.loss=temp.detach().cpu()
@@ -191,8 +203,12 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 
     def observe(self):
         self.state = self.state.to(torch.float)
-        if self.count+self.i >=0:
-            self.state = self.data.translation(self.count+self.i,self.state) #TODO
+        if self.count>1:
+
+            self.state = self.transform(self.state)
+            self.state = self.data.translation(self.count-2+self.offset,self.state,self.perm) #TODO
+            self.state = self.transform(self.state)
+
         m2=self.add
         m3=self.state.detach()
         input= torch.cat((m2,m3),0)
