@@ -102,16 +102,15 @@ class ValidationDataset(PreprocessedDataset):
     return samples.permute(0,3,1,2)
 
 
-  def translation(self,i,data,transform):
+  def translation(self,i,data,transform=None):
    data = data.reshape(-1,720,720)
    a=(i)//100 #TODO check
    b=(i)%100
    warp_matrix = self.temp[a][b] 
    flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0).cuda(0),\
 (1,3,720,720), align_corners=True)
-
-   flow = transform(flow)
- 
+   flow[:,:,:,0] = transform(flow[:,:,:,0])
+   flow[:,:,:,1] = transform(flow[:,:,:,1])
    temp= torch.nn.functional.grid_sample(.1+data.unsqueeze(0),\
 flow,align_corners=True) 
    temp[temp==0]=-.9 #TODO

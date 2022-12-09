@@ -77,8 +77,8 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.number = 1200
         self.offset = offset
         self.reset()
-        self.new(0)
-        self.shape=self.dataset.shape
+        self.new(-1)
+        self.shape= [8,720,720]
         self.i = sel.i
         self.loss=0
         self.x=1
@@ -100,7 +100,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         if random.random()>.5:
          lis.append(T.functional.vflip)
          self.y=-1
-        if random.random()>1:
+        if random.random()>.5:
          i, j, h, w = get_params()
          self.perm = lambda x: F.resized_crop(x, i, j, h, w,size, interpolation)
         if self.inval():
@@ -110,10 +110,18 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.olddenoised=None
 
     def new(self,i):
-        self.dataset = self.perm(self.transform(self.data.data(i+self.offset)))
-        self.add, self.gd = self.data.get(i+self.offset)
-        self.add = self.perm(self.transform(torch.Tensor(self.add).permute(2,0,1).cuda(0))) #necessary
-        self.gd = self.perm(self.transform(torch.Tensor(self.gd).permute(2,0,1).cuda(0))) #necessary
+        print("new"+str(i+self.offset))
+        transform = lambda x: self.perm(self.transform(x))
+        if i ==-1:
+         self.add, self.gd = self.data.get(i+1+self.offset)
+         self.add = transform(torch.Tensor(self.add).permute(2,0,1).cuda(0)) #necessary
+
+        else:
+         self.oldadd=self.add
+         self.dataset = transform(self.data.data(i+self.offset))
+         self.add, self.gd = self.data.get(i+1+self.offset)
+         self.add = transform(torch.Tensor(self.add).permute(2,0,1).cuda(0)) #necessary
+         self.gd = transform(torch.Tensor(self.gd).permute(2,0,1).cuda(0)) #necessary
 
 
     def round_retain_sum(self,x,N):
@@ -158,7 +166,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
       if not self.updated:
           self.optimizer.zero_grad()
           m1=self.observations.reshape(-1,*self.shape[-2:])
-          m2=self.add
+          m2=self.oldadd
           m3=self.state
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
 #          with torch.cuda.amp.autocast():
@@ -175,7 +183,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           self.state = self.state.detach()
           self.oldgd=self.gd
           self.olddenoised=self.denoised
-          if random.random()<.01:
+          if random.random()<.0001:
            t = str(self.offset+self.count-1)
 #           print(t)
            plt.imshow(m1.cpu().mean(0))
@@ -203,11 +211,13 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 
     def observe(self):
         self.state = self.state.to(torch.float)
-        if self.count>1:
+        print("observe" + str(self.count-2+self.offset))
+        if self.count+self.offset>1:
 
-            self.state = self.transform(self.state)
-            self.state = self.data.translation(self.count-2+self.offset,self.state,self.perm) #TODO
-            self.state = self.transform(self.state)
+         self.state = self.transform(self.state)
+         self.state = self.data.translation(self.count-2+self.offset,self.state,self.perm ) #,\
+# script.f(self.count-1+self.offset,self.transform))
+         self.state = self.transform(self.state)
 
         m2=self.add
         m3=self.state.detach()
