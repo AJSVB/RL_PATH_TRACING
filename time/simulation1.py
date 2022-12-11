@@ -74,7 +74,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.sppps = sppps
-        self.number = 1200
+        self.number = 100 #1200
         self.offset = offset
         self.reset()
         self.new(-1)
@@ -91,16 +91,16 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.count=0
         self.loss=0
         self.s = None
-        self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
+        self.state = -1 * torch.ones([64,self.HEIGHT,self.WIDTH]).cuda(0)
         lis = []
         self.perm = lambda x:x
-        if random.random()>.5:
+        if random.random()>1.5:
          lis.append(T.functional.hflip)
          self.x=-1
-        if random.random()>.5:
+        if random.random()>1.5:
          lis.append(T.functional.vflip)
          self.y=-1
-        if random.random()>.5:
+        if random.random()>1.5:
          i, j, h, w = get_params()
          self.perm = lambda x: F.resized_crop(x, i, j, h, w,size, interpolation)
         if self.inval():
@@ -110,7 +110,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.olddenoised=None
 
     def new(self,i):
-        print("new"+str(i+self.offset))
+ #       print("new"+str(i+self.offset))
         transform = lambda x: self.perm(self.transform(x))
         if i ==-1:
          self.add, self.gd = self.data.get(i+1+self.offset)
@@ -173,9 +173,9 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           self.denoised, self.state= self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) 
           temp = loss
-          if self.oldgd is not None:
-            loss+=self.criterion(self.denoised-self.olddenoised,self.gd.unsqueeze(0)-self.olddenoised)
-          if not self.inval(): #self.offset<800 or self.offset>=900:
+#          if self.oldgd is not None:
+#            loss+=self.criterion(self.denoised-self.olddenoised,self.gd.unsqueeze(0)-self.olddenoised)
+          if True: #not self.inval(): #self.offset<800 or self.offset>=900:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
@@ -211,14 +211,13 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 
     def observe(self):
         self.state = self.state.to(torch.float)
-        print("observe" + str(self.count-2+self.offset))
+#        print("observe" + str(self.count-2+self.offset))
         if self.count+self.offset>1:
 
          self.state = self.transform(self.state)
          self.state = self.data.translation(self.count-2+self.offset,self.state,self.perm ) #,\
 # script.f(self.count-1+self.offset,self.transform))
          self.state = self.transform(self.state)
-
         m2=self.add
         m3=self.state.detach()
         input= torch.cat((m2,m3),0)
@@ -274,7 +273,7 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self,self.offset)
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH),))
     self.observation_space = spaces.Box(low=-1.0001, high=1, shape=
-                    (41,int(self.HEIGHT),int(self.WIDTH)), dtype=np.float32) #MACHINE PRECISION
+                    (41+32,int(self.HEIGHT),int(self.WIDTH)), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
     self.top=0
     self.a=time.time()
@@ -306,21 +305,19 @@ class CustomEnv(gym.Env):
 #    old1 = -L1(old, gd).cpu()
 #    new1 = -L1(new, gd).cpu()
 
-
-
     if self.bool and self.simulation.count==1:
      self.bool = new1>self.top
      if self.bool:
        self.top = new1
-    if self.bool:
+    if True: # self.bool:
      te = str((self.simulation.offset%100)+self.simulation.count)
-     print(te)
+#     print(te)
 #     save(base.cpu(),"images/"+str(self.spp)+"base"+te+".png")
      save(new.cpu(),"images/"+str(self.spp)+"new"+te+".png")
 #     save(gd.cpu(),"images/"+str(self.spp)+"gd"+te+".png")
   
-     self.mses.append(mean_squared_error(new,gd).cpu())
-     self.psnrs.append(psnr(new,gd).cpu())
+#     self.mses.append(mean_squared_error(new,gd).cpu())
+#     self.psnrs.append(psnr(new,gd).cpu())
 
     reward = 10**(new1)
     done = self.spec.max_episode_steps <= self.simulation.count

@@ -64,7 +64,7 @@ class UNet(nn.Module):
     super(UNet, self).__init__()
     d=1
     # Number of channels per layer
-    ic   = 32
+    ic   = 64 #32
     ec1  = 32
     ec2  = 48//d
     ec3  = 64//d
