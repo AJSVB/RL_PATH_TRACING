@@ -1,4 +1,3 @@
-
 import math
 import torchvision
 import torchvision.transforms as transforms
@@ -91,24 +90,22 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.count=0
         self.loss=0
         self.s = None
-        self.state = -1 * torch.ones([32+32,self.HEIGHT,self.WIDTH]).cuda(0)
+        self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
         lis = []
         self.perm = lambda x:x
-        if random.random()>.5:
+        if random.random()>1.5:
          lis.append(T.functional.hflip)
          self.x=-1
-        if random.random()>.5:
+        if random.random()>1.5:
          lis.append(T.functional.vflip)
          self.y=-1
-        if random.random()>.5:
+        if random.random()>1.5:
          i, j, h, w = get_params()
          self.perm = lambda x: F.resized_crop(x, i, j, h, w,size, interpolation)
         if self.inval():
          lis=[]
          self.perm = lambda x:x
         self.transform = T.Compose(lis)
-        self.oldgd=None
-        self.olddenoised=None
 
     def new(self,i):
  #       print("new"+str(i+self.offset))
@@ -182,8 +179,6 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
             self.scheduler.step()
           self.denoised = torch.clip(self.denoised.detach(),0,1)
           self.state = self.state.detach()
-          self.oldgd=self.gd
-          self.olddenoised=self.denoised
           if random.random()<.0001:
            t = str(self.offset+self.count-1)
 #           print(t)
@@ -234,21 +229,6 @@ from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 
 import ray
 
-def MultiSSIM(a,b,gpu_id):
-  if gpu_id==-1:
-    a[0] = a[0].type(torch.float32)
-    b[0] = b[0].type(torch.float32)
-    d = torch.cat([c.unsqueeze(0) for c in a],0)
-    e = torch.cat([c for c in b],0)
-    loss=MS_SSIM(data_range=1,size_average=False)
-    return loss(d,e)
-
-  else:
-    d = torch.cat([c.unsqueeze(0) for c in a],0)
-    e = torch.cat([c for c in b],0)
-    loss=MS_SSIM(data_range=1,size_average=False)
-    return loss(d,e.unsqueeze(0)).cpu()
-
 import gym
 from gym import Env, spaces
 import numpy as np
@@ -274,7 +254,7 @@ class CustomEnv(gym.Env):
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self,self.offset)
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH),))
     self.observation_space = spaces.Box(low=-1.0001, high=1, shape=
-                    (41+32,int(self.HEIGHT),int(self.WIDTH)), dtype=np.float32) #MACHINE PRECISION
+                    (41,int(self.HEIGHT),int(self.WIDTH)), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
     self.top=0
     self.a=time.time()
@@ -286,56 +266,45 @@ class CustomEnv(gym.Env):
     with open("images/"+str(self.spp)+'psnrs.txt', 'w') as fp:
         fp.write("\n")
 
+    self.time=time.time()
+    self.sum=0
+    self.cntr=0
 
 
   def step(self, action):
+    self.sum+=time.time() - self.time
+    self.time= time.time()
+    self.cntr+=1
+    if self.cntr ==100:
+      print(self.sum/100)
+      self.cntr=0
+      self.sum=0   
+
     self.simulation.new(self.simulation.count)
- #   old = self.simulation.out(self.simulation.render())
-  #  i=-0 #works with 0 outside of tune.py TODO
     self.simulation.simulate(action)
     observation,gd = self.simulation.observe()
     new = self.simulation.out(self.simulation.render())
     loss= self.simulation.loss
-   # base = self.simulation.dataset[:4].mean(0)
     new1=1-loss
-#    baseline = MultiSSIM([base],[gd],i)[0]
-#    old1 = MultiSSIM([old], [gd],i)[0]
-#    new1 = MultiSSIM([new], [gd],i)[0]
-
-#    baseline = -L1(base,gd).cpu()
-#    old1 = -L1(old, gd).cpu()
-#    new1 = -L1(new, gd).cpu()
 
     if  self.bool:
      te = str((self.simulation.offset%100)+self.simulation.count)
-#     print(te)
-#     save(base.cpu(),"images/"+str(self.spp)+"base"+te+".png")
      save(new.cpu(),"images/"+str(self.spp)+"new"+te+".png")
-#     save(gd.cpu(),"images/"+str(self.spp)+"gd"+te+".png")
   
-#     self.mses.append(mean_squared_error(new,gd).cpu())
-#     self.psnrs.append(psnr(new,gd).cpu())
+     self.mses.append(mean_squared_error(new,gd).cpu())
+     self.psnrs.append(psnr(new,gd).cpu())
 
     reward = 10**(new1)
     done = self.spec.max_episode_steps <= self.simulation.count
     return observation.numpy(),reward.detach().numpy(),done,{}
  
-  def f(self,a):
-    a=a.numpy()
-    print(a.shape)
-    print(np.min(a))
-    print(np.max(a))
-    print(a.dtype)
-
-
-
   def insight(self): 
     img= self.simulation.s.reshape(self.HEIGHT,self.WIDTH,1)*1./np.max(self.simulation.s)
     te=str(self.top.item())
     save(img.astype(np.float32),"images/"+te+".png")
   def reset(self):
     self.bool=False
-    self.offset+=5 
+    self.offset+=1
     if self.offset%self.simulation.number >= 800 and self.offset%self.simulation.number<900 : #was between 800 and 900
       self.bool=True
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self,int((self.offset//20)*20) %self.simulation.number)
