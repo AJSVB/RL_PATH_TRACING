@@ -275,8 +275,8 @@ class CustomEnv(gym.Env):
     self.sum+=time.time() - self.time
     self.time= time.time()
     self.cntr+=1
-    if self.cntr ==100:
-      print(self.sum/100)
+    if self.cntr ==1000:
+      print(self.sum/1000)
       self.cntr=0
       self.sum=0   
 
