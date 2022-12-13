@@ -99,7 +99,7 @@ class ValidationDataset(PreprocessedDataset):
 
   def data(self,index):
     samples = torch.cat([torch.Tensor(get_ith_image(self.path,i,index)).cuda(0) for i in range(8)],0)
-    return samples.permute(0,3,1,2)
+    return samples.permute(0,3,1,2)[torch.randperm(8)]
 
 
   def translation(self,i,data,transform=None):

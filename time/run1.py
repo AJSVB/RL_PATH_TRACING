@@ -69,7 +69,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
             "grad_clip": 4,
           #"momentum": tune.uniform(.5,1) ,
           #"epsilon": .3,
-"replay_buffer_num_slots":60,
+"replay_buffer_num_slots":40, #Was 30
           "vf_loss_coeff": .5,
           "entropy_coeff": 1e-5 ,
 
@@ -102,7 +102,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
 })
     # Train for one iteration.
     from ray.air import session
-    for _ in range(1000): #Was 2000
+    for _ in range(4000): #Was 2000
          a = algo.train()
     # Save state of the trained Algorithm in a checkpoint.
    # algo.save("/tmp/rllib_checkpoint")

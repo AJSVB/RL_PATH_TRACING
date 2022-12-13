@@ -29,7 +29,7 @@ def main_worker():
   cfg = parse_args(description='Trains a model using preprocessed datasets.')
   model = get_model(cfg)
   criterion = get_loss_function(cfg)
-  criterion =  torch.nn.L1Loss()
+#  criterion =  torch.nn.L1Loss()
 
   optimizer = optim.Adam(model.parameters(), lr=1)
   result_dir = get_result_dir(cfg)
@@ -44,7 +44,7 @@ def main_worker():
   lr_scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
     max_lr=cfg.max_lr,
-    total_steps=cfg.num_epochs*10000,
+    total_steps=cfg.num_epochs*40000,
     pct_start=cfg.lr_warmup,
     anneal_strategy='cos',
     div_factor=(25. if cfg.lr is None else cfg.max_lr / cfg.lr),

@@ -74,7 +74,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.HEIGHT =  HEIGHT
         self.WIDTH =   WIDTH
         self.sppps = sppps
-        self.number = 100 #1200
+        self.number = 1200
         self.offset = offset
         self.reset()
         self.new(-1)
@@ -91,20 +91,21 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.count=0
         self.loss=0
         self.s = None
-        self.state = -1 * torch.ones([64,self.HEIGHT,self.WIDTH]).cuda(0)
+        self.state = -1 * torch.ones([32+32,self.HEIGHT,self.WIDTH]).cuda(0)
         lis = []
         self.perm = lambda x:x
-        if random.random()>1.5:
+        if random.random()>.5:
          lis.append(T.functional.hflip)
          self.x=-1
-        if random.random()>1.5:
+        if random.random()>.5:
          lis.append(T.functional.vflip)
          self.y=-1
-        if random.random()>1.5:
+        if random.random()>.5:
          i, j, h, w = get_params()
          self.perm = lambda x: F.resized_crop(x, i, j, h, w,size, interpolation)
         if self.inval():
          lis=[]
+         self.perm = lambda x:x
         self.transform = T.Compose(lis)
         self.oldgd=None
         self.olddenoised=None
@@ -174,7 +175,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) 
           temp = loss
 #          if self.oldgd is not None:
-#            loss+=self.criterion(self.denoised-self.olddenoised,self.gd.unsqueeze(0)-self.olddenoised)
+#            loss+=self.criterion(self.denoised-self.olddenoised,self.gd.unsqueeze(0)-self.oldgd.unsqueeze(0))
           if True: #not self.inval(): #self.offset<800 or self.offset>=900:
             loss.backward()
             self.optimizer.step()
@@ -305,11 +306,7 @@ class CustomEnv(gym.Env):
 #    old1 = -L1(old, gd).cpu()
 #    new1 = -L1(new, gd).cpu()
 
-    if self.bool and self.simulation.count==1:
-     self.bool = new1>self.top
-     if self.bool:
-       self.top = new1
-    if True: # self.bool:
+    if  self.bool:
      te = str((self.simulation.offset%100)+self.simulation.count)
 #     print(te)
 #     save(base.cpu(),"images/"+str(self.spp)+"base"+te+".png")
