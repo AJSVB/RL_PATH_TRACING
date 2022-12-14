@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.distributed import DistributedSampler
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 
 from .image import *
@@ -25,8 +25,8 @@ class PreprocessedDataset(Dataset):
 ## -----------------------------------------------------------------------------
 ## Training dataset
 ## -----------------------------------------------------------------------------
-from PIL import Image
-import torchvision.transforms.functional as TF
+#from PIL import Image
+#import torchvision.transforms.functional as TF
 
 
 import functools

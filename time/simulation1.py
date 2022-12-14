@@ -113,14 +113,16 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         if i ==-1:
          self.add, self.gd = self.data.get(i+1+self.offset)
          self.add = transform(torch.Tensor(self.add).permute(2,0,1).cuda(0)) #necessary
+         self.nextadd, _ = self.data.get(i+2+self.offset)
+         self.nextadd = transform(torch.Tensor(self.nextadd).permute(2,0,1).cuda(0))
 
         else:
-         self.oldadd=self.add
          self.dataset = transform(self.data.data(i+self.offset))
          self.add, self.gd = self.data.get(i+1+self.offset)
          self.add = transform(torch.Tensor(self.add).permute(2,0,1).cuda(0)) #necessary
          self.gd = transform(torch.Tensor(self.gd).permute(2,0,1).cuda(0)) #necessary
-
+         self.nextadd, _ = self.data.get(i+2+self.offset)
+         self.nextadd = transform(torch.Tensor(self.nextadd).permute(2,0,1).cuda(0))
 
     def round_retain_sum(self,x,N):
      N = np.round(N).astype(int)
@@ -164,7 +166,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
       if not self.updated:
           self.optimizer.zero_grad()
           m1=self.observations.reshape(-1,*self.shape[-2:])
-          m2=self.oldadd
+          m2=self.add
           m3=self.state
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
 #          with torch.cuda.amp.autocast():
@@ -179,7 +181,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
             self.scheduler.step()
           self.denoised = torch.clip(self.denoised.detach(),0,1)
           self.state = self.state.detach()
-          if random.random()<.0001:
+          if random.random()<.01:
            t = str(self.offset+self.count-1)
 #           print(t)
            plt.imshow(m1.cpu().mean(0))
@@ -214,7 +216,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
          self.state = self.data.translation(self.count-2+self.offset,self.state,self.perm ) #,\
 # script.f(self.count-1+self.offset,self.transform))
          self.state = self.transform(self.state)
-        m2=self.add
+        m2=self.nextadd
         m3=self.state.detach()
         input= torch.cat((m2,m3),0)
         return input.cpu(), self.gd

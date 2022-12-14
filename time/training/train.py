@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.cuda.amp as amp
 import torch.distributed as dist
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
 
 from .config import *
 from .model import *
@@ -29,6 +29,22 @@ def main_worker():
   cfg = parse_args(description='Trains a model using preprocessed datasets.')
   model = get_model(cfg)
   criterion = get_loss_function(cfg)
+
+
+  #torch.jit.save(model,'traced_bert.pt')
+  #loaded = torch.jit.load('traced_bert.pt')
+  i=0
+  loaded=model.cuda(i)
+  loaded.eval()
+  x_ft = torch.rand(1,33+32, 720,720)
+  x_ft_gpu = x_ft.cuda(i)
+  loaded = torch.compile(loaded) #.cuda(0)
+#  loaded = torch.compile(loaded).cuda(0)
+
+  a=time.time()
+  for _ in range(1000):
+    loaded(x_ft_gpu)
+  print((time.time()-a)/1000)
 #  criterion =  torch.nn.L1Loss()
 
   optimizer = optim.Adam(model.parameters(), lr=1)
@@ -91,3 +107,8 @@ def main_worker():
 
 if __name__ == '__main__':
   main()
+
+
+
+
+
