@@ -135,7 +135,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 
     def simulate(self, x):
         b=time.time()
-        s=torch.ones(x.shape).cuda(0)*self.sppps
+        s=(torch.ones(x.shape).cuda(0)*self.sppps).type(torch.int)
 #        x = x - torch.min(x) 
 #        x=torch.flatten(x).type(torch.float64)
 #        N= torch.sum(x)
@@ -144,7 +144,6 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 #        N=temp
 #        s= self.round_retain_sum(x,N)
         if random.random()>.999:
-            print(x.cpu())
             print(s.cpu())
             print(torch.sum(s).cpu())
         s[s<0]=-1
