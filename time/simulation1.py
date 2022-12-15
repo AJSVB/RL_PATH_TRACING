@@ -182,6 +182,8 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           self.denoised = torch.clip(self.denoised.detach(),0,1)
           self.state = self.state.detach()
           if random.random()<.01:
+           print(torch.max(self.state))
+           print(torch.min(self.state))
            t = str(self.offset+self.count-1)
 #           print(t)
            plt.imshow(m1.cpu().mean(0))

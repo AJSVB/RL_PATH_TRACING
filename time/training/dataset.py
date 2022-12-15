@@ -12,6 +12,7 @@ from torch.utils.data.distributed import DistributedSampler
 
 from .image import *
 
+
 class PreprocessedDataset(Dataset):
   def __init__(self, cfg, name):
     super(PreprocessedDataset, self).__init__()
@@ -25,8 +26,8 @@ class PreprocessedDataset(Dataset):
 ## -----------------------------------------------------------------------------
 ## Training dataset
 ## -----------------------------------------------------------------------------
-#from PIL import Image
-#import torchvision.transforms.functional as TF
+from PIL import Image
+import torchvision.transforms.functional as TF
 
 
 import functools

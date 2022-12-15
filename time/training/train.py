@@ -33,6 +33,7 @@ def main_worker():
 
   #torch.jit.save(model,'traced_bert.pt')
   #loaded = torch.jit.load('traced_bert.pt')
+  """
   i=0
   loaded=model.cuda(i)
   loaded.eval()
@@ -46,7 +47,7 @@ def main_worker():
     loaded(x_ft_gpu)
   print((time.time()-a)/1000)
 #  criterion =  torch.nn.L1Loss()
-
+  """
   optimizer = optim.Adam(model.parameters(), lr=1)
   result_dir = get_result_dir(cfg)
   resume = os.path.isdir(result_dir)
