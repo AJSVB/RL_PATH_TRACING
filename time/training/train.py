@@ -29,7 +29,7 @@ def main_worker():
   cfg = parse_args(description='Trains a model using preprocessed datasets.')
   model = get_model(cfg)
   criterion = get_loss_function(cfg)
-
+#  criterion = torch.nn.L1Loss()
 
   #torch.jit.save(model,'traced_bert.pt')
   #loaded = torch.jit.load('traced_bert.pt')

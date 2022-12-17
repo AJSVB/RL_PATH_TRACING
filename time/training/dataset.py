@@ -88,7 +88,7 @@ class ValidationDataset(PreprocessedDataset):
 #    super(ValidationDataset, self).__init__(cfg, name)
 
     self.path = "/home/ascardigli/blender-3.2.2-linux-x64/suntemple/"
-    self.temp = [np.load("temp"+str(i)+".npy") for i in range(14)]
+    self.temp = np.load("temp1200.npy")
     sampling = torch.arange(1,9).reshape(8,1,1,1).cuda(0)
     self.sampling = sampling.repeat(1,1,720,720)
     self.num_images=1400
@@ -105,9 +105,7 @@ class ValidationDataset(PreprocessedDataset):
 
   def translation(self,i,data,transform=None):
    data = data.reshape(-1,720,720)
-   a=(i)//100 #TODO check
-   b=(i)%100
-   warp_matrix = self.temp[a][b] 
+   warp_matrix = self.temp[i]
    flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0).cuda(0),\
 (1,3,720,720), align_corners=True)
    flow[:,:,:,0] = transform(flow[:,:,:,0])
