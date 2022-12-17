@@ -111,7 +111,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
  #       print("new"+str(i+self.offset))
         transform = lambda x: self.perm(self.transform(x))
         if i ==-1:
-         self.nextadd, _ = self.data.get(i+1+self.offset)
+         self.nextadd, self.gd  = self.data.get(i+1+self.offset)
          self.nextadd = transform(torch.Tensor(self.nextadd).permute(2,0,1).cuda(0))
 
         else:
