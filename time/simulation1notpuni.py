@@ -111,17 +111,15 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
  #       print("new"+str(i+self.offset))
         transform = lambda x: self.perm(self.transform(x))
         if i ==-1:
-         self.add, self.gd = self.data.get(i+1+self.offset)
-         self.add = transform(torch.Tensor(self.add).permute(2,0,1).cuda(0)) #necessary
-         self.nextadd, _ = self.data.get(i+2+self.offset)
+         self.nextadd, _ = self.data.get(i+1+self.offset)
          self.nextadd = transform(torch.Tensor(self.nextadd).permute(2,0,1).cuda(0))
 
         else:
          self.dataset = transform(self.data.data(i+self.offset))
-         self.add, self.gd = self.data.get(i+1+self.offset)
+         self.add, self.gd = self.data.get(i+self.offset)
          self.add = transform(torch.Tensor(self.add).permute(2,0,1).cuda(0)) #necessary
          self.gd = transform(torch.Tensor(self.gd).permute(2,0,1).cuda(0)) #necessary
-         self.nextadd, _ = self.data.get(i+2+self.offset)
+         self.nextadd, _ = self.data.get(i+1+self.offset)
          self.nextadd = transform(torch.Tensor(self.nextadd).permute(2,0,1).cuda(0))
 
 
@@ -153,7 +151,6 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         s[s>8] = 8
         self.s=s
         self.observations = self.data.generate(self.dataset,s,self.count) 
-        self.count+=1
         self.updated=False
 
     def inval(self):
@@ -210,15 +207,15 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
     def observe(self):
         self.state = self.state.to(torch.float)
 #        print("observe" + str(self.count-2+self.offset))
-        if self.count+self.offset>1:
-
+        if self.count>-1:
          self.state = self.transform(self.state)
-         self.state = self.data.translation(self.count-2+self.offset,self.state,self.perm ) #,\
+         self.state = self.data.translation(self.count+self.offset,self.state,self.perm ) #,\
 # script.f(self.count-1+self.offset,self.transform))
          self.state = self.transform(self.state)
         m2=self.nextadd
         m3=self.state.detach()
         input= torch.cat((m2,m3),0)
+        self.count+=1
         return input.cpu(), self.gd
 
 
