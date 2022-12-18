@@ -87,7 +87,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.observations = -1 * torch.ones([8,3,self.HEIGHT,self.WIDTH])
         self.updated=True
         self.denoised = torch.zeros([1,3,self.HEIGHT,self.WIDTH]).cuda(0)
-        self.count=0
+        self.count=-1
         self.loss=0
         self.s = None
         self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
@@ -168,7 +168,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           m3=self.state
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
 #          with torch.cuda.amp.autocast():
-          self.denoised, gd = self.model(input)
+          self.denoised, _ = self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) 
           temp = loss
 #          if self.oldgd is not None:

@@ -87,7 +87,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.observations = -1 * torch.ones([8,3,self.HEIGHT,self.WIDTH])
         self.updated=True
         self.denoised = torch.zeros([1,3,self.HEIGHT,self.WIDTH]).cuda(0)
-        self.count=0
+        self.count=-1
         self.loss=0
         self.s = None
         self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
