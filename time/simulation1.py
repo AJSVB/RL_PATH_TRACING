@@ -87,7 +87,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.observations = -1 * torch.ones([8,3,self.HEIGHT,self.WIDTH])
         self.updated=True
         self.denoised = torch.zeros([1,3,self.HEIGHT,self.WIDTH]).cuda(0)
-        self.count=0
+        self.count=-1
         self.loss=0
         self.s = None
         self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
@@ -108,7 +108,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.transform = T.Compose(lis)
 
     def new(self,i):
- #       print("new"+str(i+self.offset))
+        print("new"+str(i+self.offset))
         transform = lambda x: self.perm(self.transform(x))
         if i ==-1:
          self.nextadd, self.gd = self.data.get(i+1+self.offset)
@@ -121,6 +121,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
          self.gd = transform(torch.Tensor(self.gd).permute(2,0,1).cuda(0)) #necessary
          self.nextadd, _ = self.data.get(i+1+self.offset)
          self.nextadd = transform(torch.Tensor(self.nextadd).permute(2,0,1).cuda(0))
+
     def round_retain_sum(self,x,N):
      N = np.round(N).astype(int)
      y = x.type(torch.int)
@@ -205,7 +206,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 
     def observe(self):
         self.state = self.state.to(torch.float)
-#        print("observe" + str(self.count-2+self.offset))
+        print("observe" + str(self.count+self.offset))
         if self.count>-1:
 
          self.state = self.transform(self.state)
@@ -282,7 +283,7 @@ class CustomEnv(gym.Env):
     self.simulation.new(self.simulation.count)
     self.simulation.simulate(action)
     new = self.simulation.out(self.simulation.render())
-    observation,_ = self.simulation.observe()
+    observation,gd = self.simulation.observe()
     loss= self.simulation.loss
     new1=1-loss
 

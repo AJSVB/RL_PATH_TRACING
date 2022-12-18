@@ -168,7 +168,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           m3=self.state
           input= torch.cat((m1,m2,m3),0).unsqueeze(0)
 #          with torch.cuda.amp.autocast():
-          self.denoised, _ = self.model(input)
+          self.denoised, gd = self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) 
           temp = loss
 #          if self.oldgd is not None:

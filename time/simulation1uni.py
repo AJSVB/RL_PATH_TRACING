@@ -284,7 +284,7 @@ class CustomEnv(gym.Env):
     self.simulation.new(self.simulation.count)
     self.simulation.simulate(action)
     new = self.simulation.out(self.simulation.render())
-    observation,_ = self.simulation.observe()
+    observation,gd = self.simulation.observe()
     loss= self.simulation.loss
     new1=1-loss
 
