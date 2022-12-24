@@ -50,6 +50,8 @@ def get_aux(path,frame_number):
 def g(warp_matrix,data):
    flow = torch.nn.functional.affine_grid(torch.Tensor(warp_matrix).unsqueeze(0),\
 (1,3,720,720), align_corners=True)
+   print(flow.shape)
+   print(data.shape)
    temp= torch.nn.functional.grid_sample(.1+torch.Tensor(data).unsqueeze(0).unsqueeze(0),flow,align_corners=True) 
    temp[temp==0]=-.9 #TODO
    return (temp-.1).squeeze(0)

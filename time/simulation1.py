@@ -93,13 +93,13 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
         lis = []
         self.perm = lambda x:x
-        if random.random()>.5:
+        if random.random()>1.5:
          lis.append(T.functional.hflip)
          self.x=-1
-        if random.random()>.5:
+        if random.random()>1.5:
          lis.append(T.functional.vflip)
          self.y=-1
-        if random.random()>.5:
+        if random.random()>1.5:
          i, j, h, w = get_params()
          self.perm = lambda x: F.resized_crop(x, i, j, h, w,size, interpolation)
         if self.inval():
@@ -177,14 +177,14 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
             self.scheduler.step()
           self.denoised = torch.clip(self.denoised.detach(),0,1)
           self.state = self.state.detach()
-          if random.random()< 0.001:
+          if random.random()< 0.0001:
            t = str(self.offset+self.count-1)
 #           print(t)
-           plt.imshow(m1.cpu().mean(0))
+#           plt.imshow(m1.cpu().mean(0))
 #           plt.savefig("images/"+t+"obs.png")
            plt.clf()
            plt.imshow(m2.cpu().mean(0))
-#           plt.savefig("images/"+t+"add.png")
+           plt.savefig("images/"+t+"add.png")
            plt.clf()
            plt.imshow(m3.cpu().mean(0))
            plt.savefig("images/"+t+"stt.png")
@@ -192,10 +192,10 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
            plt.imshow(self.gd.permute(1,2,0).detach().cpu())
            plt.savefig("images/"+t+"target.png")
            plt.clf()
-           plt.imshow(self.denoised[0].to(torch.float).permute(1,2,0).detach().cpu())
+#           plt.imshow(self.denoised[0].to(torch.float).permute(1,2,0).detach().cpu())
 #           plt.savefig("images/"+t+"out.png")
-           plt.clf()
-           plt.imshow(self.s.detach().cpu().reshape(720,720))
+#           plt.clf()
+#           plt.imshow(self.s.detach().cpu().reshape(720,720))
 #           plt.savefig("images/"+t+"hitmap.png")
 
       self.updated=True
@@ -206,7 +206,6 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
     def observe(self):
         self.state = self.state.to(torch.float)
         if self.count>-1:
-
          self.state = self.transform(self.state)
          self.state = self.data.translation(self.count+self.offset,self.state,self.perm ) #,\
 # script.f(self.count-1+self.offset,self.transform))
