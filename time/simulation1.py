@@ -177,7 +177,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
             self.scheduler.step()
           self.denoised = torch.clip(self.denoised.detach(),0,1)
           self.state = torch.clip(self.state.detach(),-1,1)
-          if random.random()< 1:
+          if random.random()< 0.01:
            t = str(self.offset+self.count-1)
 #           print(t)
 #           plt.imshow(m1.cpu().mean(0))
