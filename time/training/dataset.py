@@ -96,6 +96,9 @@ class ValidationDataset(PreprocessedDataset):
     sampling = torch.arange(1,9).reshape(8,1,1,1).cuda(0)
     self.sampling = sampling.repeat(1,1,720,720)
     self.num_images=1400
+    self.bb = torch.Tensor(np.tile(np.arange(720),(720,1))).cuda(0)
+    self.aa = torch.Tensor(np.tile(np.arange(720).T,(720,1)).T).cuda(0)
+
 
      
   def __len__(self):
@@ -110,14 +113,25 @@ class ValidationDataset(PreprocessedDataset):
   def translation(self,i,data,transform=None):
    data = data.reshape(-1,720,720)
    flow = get_flow("/home/ascardigli/blender-3.2.2-linux-x64/suntemple/motions/",i+1).cuda(0) #flow from i to i+1
+   
+
+   a=720
+   b=720
+
+
+   flow[:,:,:,0] = flow[:,:,:,0]  - 2*self.bb/b
+   flow[:,:,:,1] = flow[:,:,:,1]  - 2*self.aa/a	
+
    flow[:,:,:,0] = transform(flow[:,:,:,0])
    flow[:,:,:,1] = transform(flow[:,:,:,1])
 
-   temp= torch.nn.functional.grid_sample(data.unsqueeze(0),\
-flow) 
+   flow[:,:,:,0] = flow[:,:,:,0]  + 2*self.bb/b
+   flow[:,:,:,1] = flow[:,:,:,1]  + 2*self.aa/a
+
+
+#   temp= torch.nn.functional.grid_sample(data.unsqueeze(0),flow) 
 #   return temp.squeeze(0)
-#   temp= torch.nn.functional.grid_sample(.1+data.unsqueeze(0),\
-flow) 
+   temp= torch.nn.functional.grid_sample(.1+data.unsqueeze(0),flow,align_corners=False) 
    temp[temp==0]=-.9 #TODO
    return (temp-.1).squeeze(0)
 

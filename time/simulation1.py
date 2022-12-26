@@ -93,13 +93,13 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
         lis = []
         self.perm = lambda x:x
-        if random.random()>1.5:
+        if random.random()>.5:
          lis.append(T.functional.hflip)
          self.x=-1
-        if random.random()>1.5:
+        if random.random()>.5:
          lis.append(T.functional.vflip)
          self.y=-1
-        if random.random()>1.5:
+        if random.random()>.5:
          i, j, h, w = get_params()
          self.perm = lambda x: F.resized_crop(x, i, j, h, w,size, interpolation)
         if self.inval():
@@ -176,8 +176,8 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
             self.optimizer.step()
             self.scheduler.step()
           self.denoised = torch.clip(self.denoised.detach(),0,1)
-          self.state = self.state.detach()
-          if random.random()< 0.0001:
+          self.state = torch.clip(self.state.detach(),-1,1)
+          if random.random()< 1:
            t = str(self.offset+self.count-1)
 #           print(t)
 #           plt.imshow(m1.cpu().mean(0))

@@ -93,10 +93,10 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         self.state = -1 * torch.ones([32,self.HEIGHT,self.WIDTH]).cuda(0)
         lis = []
         self.perm = lambda x:x
-        if random.random()>1.5:
+        if random.random()>.5:
          lis.append(T.functional.hflip)
          self.x=-1
-        if random.random()>1.5:
+        if random.random()>.5:
          lis.append(T.functional.vflip)
          self.y=-1
         if random.random()>1.5:
