@@ -101,11 +101,11 @@ class UNet(nn.Module):
 
 
     nb = 64
-    self.a=Conv(in_channels+ic,nb)
-    self.a1=SimpleConv(nb,nb)
+    self.a=SimpleConv(in_channels+ic,nb)
+    self.a1=Conv(nb,nb)
     self.b=Conv(nb,nb)
-    self.b1=SimpleConv(nb,nb) 
-    self.c=Conv(nb,ic)
+    self.b1=Conv(nb,nb) 
+    self.c=SimpleConv(nb,ic)
 
   def forward(self, input):
     #a=time.time()
@@ -113,12 +113,10 @@ class UNet(nn.Module):
     # ---------------------
     input = relu(self.a(input))
 #    input = relu(self.a1(input))
-
-    input = relu(self.b(input))
- #   input = relu(self.b1(input))
-
-    input = tanh(self.c(input))
-
+#    input = relu(self.b(input))
+#    input = relu(self.b1(input))
+    input = self.c(input)
+    input = tanh(input)
     #torch.cuda.synchronize()
     #print("state "+str(time.time()-a))
     # Encoder

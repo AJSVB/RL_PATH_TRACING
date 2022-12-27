@@ -29,25 +29,8 @@ def main_worker():
   cfg = parse_args(description='Trains a model using preprocessed datasets.')
   model = get_model(cfg)
   criterion = get_loss_function(cfg)
-#  criterion = torch.nn.L1Loss()
 
-  #torch.jit.save(model,'traced_bert.pt')
-  #loaded = torch.jit.load('traced_bert.pt')
-  """
-  i=0
-  loaded=model.cuda(i)
-  loaded.eval()
-  x_ft = torch.rand(1,33+32, 720,720)
-  x_ft_gpu = x_ft.cuda(i)
-  loaded = torch.compile(loaded) #.cuda(0)
-#  loaded = torch.compile(loaded).cuda(0)
 
-  a=time.time()
-  for _ in range(1000):
-    loaded(x_ft_gpu)
-  print((time.time()-a)/1000)
-#  criterion =  torch.nn.L1Loss()
-  """
   optimizer = optim.Adam(model.parameters(), lr=1)
   result_dir = get_result_dir(cfg)
   resume = os.path.isdir(result_dir)
@@ -61,7 +44,7 @@ def main_worker():
   lr_scheduler = optim.lr_scheduler.OneCycleLR(
     optimizer,
     max_lr=cfg.max_lr,
-    total_steps=cfg.num_epochs*40000,
+    total_steps=cfg.num_epochs*200*100
     pct_start=cfg.lr_warmup,
     anneal_strategy='cos',
     div_factor=(25. if cfg.lr is None else cfg.max_lr / cfg.lr),

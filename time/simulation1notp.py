@@ -99,7 +99,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         if random.random()>.5:
          lis.append(T.functional.vflip)
          self.y=-1
-        if random.random()>.5:
+        if random.random()>1.5:
          i, j, h, w = get_params()
          self.perm = lambda x: F.resized_crop(x, i, j, h, w,size, interpolation)
         if self.inval():

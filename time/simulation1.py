@@ -99,7 +99,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         if random.random()>.5:
          lis.append(T.functional.vflip)
          self.y=-1
-        if random.random()>.5:
+        if random.random()>1.5:
          i, j, h, w = get_params()
          self.perm = lambda x: F.resized_crop(x, i, j, h, w,size, interpolation)
         if self.inval():
@@ -168,7 +168,6 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 #          with torch.cuda.amp.autocast():
           self.denoised, self.state= self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) 
-          temp = loss
 #          if self.oldgd is not None:
 #            loss+=self.criterion(self.denoised-self.olddenoised,self.gd.unsqueeze(0)-self.oldgd.unsqueeze(0))
           if True: #not self.inval(): #self.offset<800 or self.offset>=900:
@@ -177,7 +176,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
             self.scheduler.step()
           self.denoised = torch.clip(self.denoised.detach(),0,1)
           self.state = torch.clip(self.state.detach(),-1,1)
-          if random.random()< 0.01:
+          if random.random()< 0.0001:
            t = str(self.offset+self.count-1)
 #           print(t)
 #           plt.imshow(m1.cpu().mean(0))
@@ -199,7 +198,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 #           plt.savefig("images/"+t+"hitmap.png")
 
       self.updated=True
-      self.loss=temp.detach().cpu()
+      self.loss=loss.detach().cpu()
       return self.denoised
 
 
@@ -250,7 +249,7 @@ class CustomEnv(gym.Env):
     self.offset=0
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self,self.offset)
     self.action_space = spaces.Box(low=0,high=1,shape=(int(self.HEIGHT*self.WIDTH),))
-    self.observation_space = spaces.Box(low=-1.0001, high=1, shape=
+    self.observation_space = spaces.Box(low=-1.0001, high=1.0001, shape=
                     (41,int(self.HEIGHT),int(self.WIDTH)), dtype=np.float32) #MACHINE PRECISION
     self.spec = Spec(self.max)
     self.top=0
