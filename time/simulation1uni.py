@@ -99,7 +99,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
         if random.random()>.5:
          lis.append(T.functional.vflip)
          self.y=-1
-        if random.random()>.5:
+        if random.random()>1.5:
          i, j, h, w = get_params()
          self.perm = lambda x: F.resized_crop(x, i, j, h, w,size, interpolation)
         if self.inval():
@@ -172,7 +172,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           temp = loss
 #          if self.oldgd is not None:
 #            loss+=self.criterion(self.denoised-self.olddenoised,self.gd.unsqueeze(0)-self.oldgd.unsqueeze(0))
-          if True: #not self.inval(): #self.offset<800 or self.offset>=900:
+          if not self.inval(): #self.offset<800 or self.offset>=900:
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
@@ -305,7 +305,6 @@ class CustomEnv(gym.Env):
     save(img.astype(np.float32),"images/"+te+".png")
   def reset(self):
     self.bool=False
-    self.offset+=1
     if self.offset%self.simulation.number >= 800 and self.offset%self.simulation.number<900 : #was between 800 and 900
       self.bool=True
     self.simulation = PhysicSimulation(self.spp,self.sppps,self.HEIGHT,self.WIDTH,self,int((self.offset//20)*20) %self.simulation.number)
@@ -322,6 +321,7 @@ class CustomEnv(gym.Env):
 
     self.mses=[]
     self.psnrs=[]
+    self.offset+=10
 
     return temp.numpy()
     

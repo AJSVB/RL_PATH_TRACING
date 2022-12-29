@@ -80,13 +80,12 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
 "normalize_actions":False,
 "train_batch_size":4, #Was 128
 "num_envs_per_worker":1,
-        'num_workers':1, #8, TODO
+"num_workers":1,
 #"",
 "num_gpus":4,
 #"replay_proportion":.5,
 #"learner_queue_timeout":100,
 
-#"evaluation_num_workers":1,
 'explore':False,
 'num_cpus_per_worker':48,
 'num_gpus_per_worker':4,

@@ -147,10 +147,13 @@ class UN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
          x = input_dict["obs"]
+         mult = 1
+         if (x==0).all():
+           mult = 0
          x = self._convs(x)
          self.tmp = self.head_value(x).reshape(*x.shape[:1],-1).mean(1)
          o=self.head(x)
-         return o
+         return o*mult
 
     @override(TorchModelV2)
     def forward(
@@ -160,9 +163,8 @@ class UN(TorchModelV2, nn.Module):
         seq_lens: TensorType,
     ) -> (TensorType, List[TensorType]):
       import time
-#      input_dict,state,seq_lens = input_dict.to(torch.half),state,seq_lens
+
       a=time.time()
-#      with torch.cuda.amp.autocast():
       out=self.f(input_dict,state,seq_lens)
       out=out.reshape(out.shape[0],-1)
       temp =  torch.nn.Tanh()(out)*20-10
