@@ -9,11 +9,11 @@ import time
 from .dataset import *
 from .util import *
 
-def get_model(cfg):
+def get_model(cfg,inp=33,ic=32):
   type = cfg.model
-  num_input_channels = 33
+  num_input_channels = inp
   if type == 'unet':
-    return UNet(num_input_channels)
+    return UNet(num_input_channels,ic=ic)
   else:
     error('invalid model')
 
@@ -60,11 +60,11 @@ def concat(a, b):
 ## -----------------------------------------------------------------------------
 
 class UNet(nn.Module):
-  def __init__(self, in_channels=3, out_channels=3):
+  def __init__(self, in_channels=3, out_channels=3,ic=32):
     super(UNet, self).__init__()
     d=1
     # Number of channels per layer
-    ic   = 32
+    ic   = ic
     ec1  = 32
     ec2  = 48//d
     ec3  = 64//d
@@ -79,9 +79,10 @@ class UNet(nn.Module):
 
     # Convolutions
 
+    nb = 64
 
 
-    self.enc_conv0  = Conv(ic,      ec1)
+    self.enc_conv0  = Conv(ec1,      ec1)
 #    self.enc_conv0  = Conv(64,      ec1)
     self.enc_conv1  = Conv(ec1,     ec1)
     self.enc_conv2  = Conv(ec1,     ec2)
@@ -95,17 +96,16 @@ class UNet(nn.Module):
     self.dec_conv3b = Conv(dc3,     dc3)
     self.dec_conv2a = Conv(dc3+ec1, dc2)
     self.dec_conv2b = Conv(dc2,     dc2)
-    self.dec_conv1a = Conv(dc2+ic,  dc1a)
+    self.dec_conv1a = Conv(dc2+ec1,  dc1a)
     self.dec_conv1b = Conv(dc1a,    dc1b)
     self.dec_conv0  = Conv(dc1b,    oc)
 
 
-    nb = 64
     self.a=SimpleConv(in_channels+ic,nb)
     self.a1=Conv(nb,nb)
     self.b=Conv(nb,nb)
     self.b1=Conv(nb,nb) 
-    self.c=SimpleConv(nb,ic)
+    self.c=SimpleConv(nb,ec1)
 
   def forward(self, input):
     #a=time.time()
@@ -166,5 +166,4 @@ class UNet(nn.Module):
     x = self.dec_conv0(x)            # dec_conv0
     #torch.cuda.synchronize()         
     #print("decoder "+str(time.time()-a))
-
     return x ,input.squeeze(0)

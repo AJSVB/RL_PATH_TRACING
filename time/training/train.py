@@ -24,9 +24,9 @@ def main():
   start_workers(cfg, main_worker)
 
 # Worker function
-def main_worker():
+def main_worker(inp = 33,ic=32):
   cfg = parse_args(description='Trains a model using preprocessed datasets.')
-  model = get_model(cfg)
+  model = get_model(cfg,inp=inp,ic=ic)
   criterion = get_loss_function(cfg)
 
 
