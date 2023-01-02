@@ -93,7 +93,7 @@ from ray.rllib.utils.typing import ModelConfigDict, TensorType
 torch, nn = try_import_torch()
 
 
-class UN(TorchModelV2, nn.Module):
+class UN(nn.Module):
     def __init__(
         self,
         obs_space: gym.spaces.Space,
@@ -103,10 +103,6 @@ class UN(TorchModelV2, nn.Module):
         name: str,
     ):
 
-        if model_config is not None:
-         TorchModelV2.__init__(
-             self, obs_space, action_space, num_outputs, model_config, name
-         )
         nn.Module.__init__(self)
 
         
@@ -117,7 +113,7 @@ class UN(TorchModelV2, nn.Module):
 
 
         c=3
-        filters = [                     [2,[c,c], [1,1]],
+        filters = [                     [1,[c,c], [1,1]],
                                         [1,[c,c], [1,1]]]
         layers=[]
         in_size = [w, h]
@@ -167,11 +163,7 @@ class UN(TorchModelV2, nn.Module):
       a=time.time()
       out=self.f(input_dict,state,seq_lens)
       out=out.reshape(out.shape[0],-1)
-      temp =  torch.nn.Tanh()(out)*20-10
-  #    torch.cuda.synchronize()
- #     print(time.time()-a)
- 
-      return temp.to(torch.float), state
+      return out, state
 
     @override(TorchModelV2)
     def value_function(self) -> TensorType:

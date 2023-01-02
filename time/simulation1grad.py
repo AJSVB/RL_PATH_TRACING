@@ -27,7 +27,8 @@ def p(x,y):
 #L1 = torch.nn.L1Loss()
 
 list = []
-
+from torch.autograd import Function
+from torch.autograd import Variable
 import random
 from torchvision.transforms import *
 
@@ -37,6 +38,41 @@ size=(720,720)
 scale=(0.08, 1.0)
 ratio=(3.0 / 4.0, 4.0 / 3.0)
 interpolation=InterpolationMode.BILINEAR
+
+
+class Render(Function):
+    @staticmethod
+    def forward(ctx, x, sim):
+#        x = x - torch.min(x)
+        x=torch.flatten(x)
+        M = sim.sppps*sim.WIDTH*sim.HEIGHT
+        e = torch.exp(x)
+        s = torch.sum(e)
+        s = torch.floor(M*e/s).clamp(min=1)
+        s[s<0]=-1
+        s[s>8] = 8
+        sim.s=s
+        if random.random()<.01:
+         print(torch.mean(s))
+        observations = sim.data.generate(sim.dataset,s.type(torch.long),sim.count) 
+
+        obs = observations.reshape(8,-1)
+        mask = obs!=-1
+        obs = (obs*mask).sum(dim=0)/mask.sum(dim=0)
+        obs = obs.reshape(3,720,720)
+
+        ctx.save_for_backward((sim.gd - obs)/s.reshape(1,720,720).expand(3,-1,-1))
+        return observations
+
+
+    @staticmethod
+    def backward(ctx, dL_dout):
+        dS_dn = ctx.saved_tensors[0]
+        dL_din = torch.sum(torch.mul(dL_dout ,Variable(dS_dn)), dim=1, keepdim=True)
+
+        return tuple([dL_din] + [None]*7)
+
+
 
 def get_params():
         height, width = 720,720 
@@ -133,23 +169,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
      return y
 
     def simulate(self, x):
-        b=time.time()
-        x=torch.Tensor(x).cuda(0)
-        x = x - torch.min(x) 
-        x=torch.flatten(x).type(torch.float64)
-        N= torch.sum(x)
-        temp = self.sppps*self.WIDTH*self.HEIGHT 
-        x=x*temp/N
-        N=temp
-        s= self.round_retain_sum(x,N)
-        if random.random()>.999:
-            print(x.cpu())
-            print(s.cpu())
-            print(torch.sum(s).cpu())
-        s[s<0]=-1
-        s[s>8] = 8
-        self.s=s
-        self.observations = self.data.generate(self.dataset,s,self.count) 
+        self.observations = Render.apply(x,self) 
         self.updated=False
 
     def inval(self):
@@ -168,6 +188,8 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
 #          with torch.cuda.amp.autocast():
           self.denoised, self.state= self.model(input)
           loss = self.criterion(self.denoised, self.gd.unsqueeze(0)) 
+          if random.random()<.01: 
+            print(loss)
 #          if self.oldgd is not None:
 #            loss+=self.criterion(self.denoised-self.olddenoised,self.gd.unsqueeze(0)-self.oldgd.unsqueeze(0))
           if not self.inval(): #self.offset<800 or self.offset>=900:
@@ -241,7 +263,6 @@ class CustomEnv(gym.Env):
     self.max = 20
 
 
-    self.id = env_config.vector_index
     self.i = env_config["i"]
     self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
     self.model=self.model.to("cuda:0")
@@ -292,8 +313,11 @@ class CustomEnv(gym.Env):
 
     reward = 10**(new1)
     done = self.spec.max_episode_steps <= self.simulation.count
-    return observation.numpy(),reward.detach().numpy(),done,{}
+    return observation,reward,done,{}
  
+  def grad(self):
+    return self.simulation.grad
+
   def insight(self): 
     img= self.simulation.s.reshape(self.HEIGHT,self.WIDTH,1)*1./np.max(self.simulation.s)
     te=str(self.top.item())
@@ -315,7 +339,7 @@ class CustomEnv(gym.Env):
     self.mses=[]
     self.psnrs=[]
     self.offset+=10
-    return temp.numpy()
+    return temp
     
 def save(data,name):
     img= T.ToPILImage()(data)
