@@ -281,9 +281,9 @@ class CustomEnv(gym.Env):
     self.mses = []
     self.psnrs = []
 
-    with open("comp/"+str(self.spp)+'mses.txt', 'w') as fp:
+    with open("comp/"+str(self.spp)+'msesgrad.txt', 'w') as fp:
         fp.write("\n")
-    with open("comp/"+str(self.spp)+'psnrs.txt', 'w') as fp:
+    with open("comp/"+str(self.spp)+'psnrsgrad.txt', 'w') as fp:
         fp.write("\n")
 
     self.time=time.time()
@@ -333,10 +333,10 @@ class CustomEnv(gym.Env):
     temp ,_= self.simulation.observe()
 
     if self.bool:
-     with open("comp/"+str(self.spp)+'mses.txt', 'a') as fp:
+     with open("comp/"+str(self.spp)+'msesgrad.txt', 'a') as fp:
          fp.write("\n".join(str(item.item()) for item in self.mses))
          fp.write("\n")
-     with open("comp/"+str(self.spp)+'psnrs.txt', 'a') as fp:
+     with open("comp/"+str(self.spp)+'psnrsgrad.txt', 'a') as fp:
          fp.write("\n".join(str(item.item()) for item in self.psnrs))
          fp.write("\n")
     self.mses=[]

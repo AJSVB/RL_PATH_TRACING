@@ -53,7 +53,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
 
 
     sim = env(env_config)
-    for i in range(1200):
+    for i in range(2000):
       print(i)
       a=sim.reset()
       a=g(a)

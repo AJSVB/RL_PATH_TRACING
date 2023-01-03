@@ -25,7 +25,8 @@ p_denoised = []
 p_ray= []
 i=10
 import  math
-for spp in range(0,9):
+
+def f(spp,i):
  color = a.data(i).cpu()*math.sqrt(spp+1) # (5/8+3*spp/8)
  temp = dataset.get_aux(a.path,i)
  gd = torch.Tensor(dataset.get_truth(a.path,i))
@@ -42,29 +43,38 @@ for spp in range(0,9):
  p_denoised.append(psnr(b,gd))
  m_ray.append(mean_squared_error(ray,gd))
  p_ray.append(psnr(ray,gd))
-
-with open("comp/"+str(spp)+'msesdenoised.txt', 'w') as fp:
-        fp.write("\n")
-with open("comp/"+str(spp)+'psnrsdenoised.txt', 'w') as fp:
-        fp.write("\n")
-with open("comp/"+str(spp)+'msesray.txt', 'w') as fp:
-        fp.write("\n")
-with open("comp/"+str(spp)+'psnrsray.txt', 'w') as fp:
-        fp.write("\n")
+ return m_denoised,p_denoised,m_ray,p_ray
 
 
-with open("comp/"+str(spp)+'msesdenoised.txt', 'a') as fp:
+
+
+for spp in range(0,9):
+ for i in range(800,900):
+  m_denoised,p_denoised,m_ray,p_ray=f(spp,i)
+ with open("comp/"+str(spp)+'msesdenoised.txt', 'w') as fp:
+        fp.write("\n")
+ with open("comp/"+str(spp)+'psnrsdenoised.txt', 'w') as fp:
+        fp.write("\n")
+ with open("comp/"+str(spp)+'msesray.txt', 'w') as fp:
+        fp.write("\n")
+ with open("comp/"+str(spp)+'psnrsray.txt', 'w') as fp:
+        fp.write("\n")
+
+
+ with open("comp/"+str(spp)+'msesdenoised.txt', 'a') as fp:
          fp.write("\n".join(str(item.item()) for item in m_denoised))
          fp.write("\n")
-with open("comp/"+str(spp)+'psnrsdenoised.txt', 'a') as fp:
+ with open("comp/"+str(spp)+'psnrsdenoised.txt', 'a') as fp:
          fp.write("\n".join(str(item.item()) for item in p_denoised))
          fp.write("\n")
-with open("comp/"+str(spp)+'msesray.txt', 'a') as fp:
+ with open("comp/"+str(spp)+'msesray.txt', 'a') as fp:
          fp.write("\n".join(str(item.item()) for item in m_ray))
          fp.write("\n")
-with open("comp/"+str(spp)+'psnrsray.txt', 'a') as fp:
+ with open("comp/"+str(spp)+'psnrsray.txt', 'a') as fp:
          fp.write("\n".join(str(item.item()) for item in p_ray))
          fp.write("\n")
+
+
 
 plt.imshow(gd)
 plt.savefig("images/target.png")
