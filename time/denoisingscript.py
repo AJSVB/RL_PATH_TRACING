@@ -18,15 +18,13 @@ spp=8
 a=dataset.ValidationDataset(None, "nul")
 import torch
 pid="0"
-m_denoised = []
-m_ray= []
-
-p_denoised = []
-p_ray= []
-i=10
 import  math
 
 def f(spp,i):
+ m_denoised = []
+ m_ray= []
+ p_denoised = []
+ p_ray= []
  color = a.data(i).cpu()*math.sqrt(spp+1) # (5/8+3*spp/8)
  temp = dataset.get_aux(a.path,i)
  gd = torch.Tensor(dataset.get_truth(a.path,i))
@@ -76,13 +74,4 @@ for spp in range(0,9):
 
 
 
-plt.imshow(gd)
-plt.savefig("images/target.png")
-plt.clf()
-plt.imshow(b)
-plt.savefig("images/b.png")
-plt.clf()
-plt.imshow(ray)
-plt.savefig("images/ray.png")
-plt.clf()
 

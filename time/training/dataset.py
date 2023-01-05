@@ -74,7 +74,7 @@ def get_aux(path,frame_number):
 
 @functools.lru_cache(maxsize=1000)
 def get_flow(path,frame_number):
-  a=path+str(frame_number).zfill(4)+".pt"
+  a=path+str(frame_number).zfill(4)+"corr.pt"
   return torch.load(a)[:,:720,:720]
 
 #get_aux.cache_clear()

@@ -74,7 +74,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
           "entropy_coeff": 1e-5 ,
 
 #"sgd_minibatch_size":16,
-"explore":False,
+#"explore":False,
 #"epsilon":0,
 #"gamma":0,
 "normalize_actions":False,
