@@ -77,15 +77,6 @@ def get_flow(path,frame_number):
   a=path+str(frame_number).zfill(4)+"corr.pt"
   return torch.load(a)[:,:720,:720]
 
-#get_aux.cache_clear()
-#get_truth.cache_clear()
-#get_ith_image.cache_clear()
-#import gc
-#gc.collect()
-#objects = [i for i in gc.get_objects() if isinstance(i, functools._lru_cache_wrapper)]
-#for object in objects:
-# object.cache_clear()
-#import matplotlib.pyplot as plt
 
 class ValidationDataset(PreprocessedDataset):
   def __init__(self, cfg, name):
