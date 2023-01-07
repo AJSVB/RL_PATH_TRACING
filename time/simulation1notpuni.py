@@ -260,9 +260,9 @@ class CustomEnv(gym.Env):
     self.mses = []
     self.psnrs = []
 
-    with open("images/"+str(self.spp)+'mses3.txt', 'w') as fp:
+    with open("comp/"+str(self.spp)+'mses3.txt', 'w') as fp:
         fp.write("\n")
-    with open("images/"+str(self.spp)+'psnrs3.txt', 'w') as fp:
+    with open("comp/"+str(self.spp)+'psnrs3.txt', 'w') as fp:
         fp.write("\n")
 
     self.time=time.time()

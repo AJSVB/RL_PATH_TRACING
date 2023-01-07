@@ -262,9 +262,9 @@ class CustomEnv(gym.Env):
     self.mses = []
     self.psnrs = []
 
-    with open("images/"+str(self.spp)+'mses2.txt', 'w') as fp:
+    with open("comp/"+str(self.spp)+'mses2.txt', 'w') as fp:
         fp.write("\n")
-    with open("images/"+str(self.spp)+'psnrs2.txt', 'w') as fp:
+    with open("comp/"+str(self.spp)+'psnrs2.txt', 'w') as fp:
         fp.write("\n")
 
     self.time=time.time()
@@ -312,10 +312,10 @@ class CustomEnv(gym.Env):
 
 
     if self.bool:
-     with open("images/"+str(self.spp)+'mses2.txt', 'a') as fp:
+     with open("comp/"+str(self.spp)+'mses2.txt', 'a') as fp:
          fp.write("\n".join(str(item.item()) for item in self.mses))
          fp.write("\n")
-     with open("images/"+str(self.spp)+'psnrs2.txt', 'a') as fp:
+     with open("comp/"+str(self.spp)+'psnrs2.txt', 'a') as fp:
          fp.write("\n".join(str(item.item()) for item in self.psnrs))
          fp.write("\n")
 

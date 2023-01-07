@@ -322,3 +322,4 @@ def save(data,name):
     if img.mode != 'RGB':
      img = img.convert('RGB')
     img.save(name)
+	

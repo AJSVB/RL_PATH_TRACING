@@ -83,10 +83,11 @@ class ValidationDataset(PreprocessedDataset):
 #    super(ValidationDataset, self).__init__(cfg, name)
 
     self.path = "/home/ascardigli/blender-3.2.2-linux-x64/suntemple/"
+    self.path2 ="/home/ascardigli/blender-3.2.2-linux-x64/zeroday/"
     self.temp = np.load("temp1200.npy")
     sampling = torch.arange(1,9).reshape(8,1,1,1).cuda(0)
     self.sampling = sampling.repeat(1,1,720,720)
-    self.num_images=1400
+    self.num_images=1600
     self.bb = torch.Tensor(np.tile(np.arange(720),(720,1))).cuda(0)
     self.aa = torch.Tensor(np.tile(np.arange(720).T,(720,1)).T).cuda(0)
 
@@ -97,13 +98,24 @@ class ValidationDataset(PreprocessedDataset):
 
 
   def data(self,index):
-    samples = torch.cat([torch.Tensor(get_ith_image(self.path,i,index)).cuda(0) for i in range(8)],0)
+    samples = torch.cat([torch.Tensor(get_ith_image(self.get_path(index),i,self.get_i(index))).cuda(0) for i in range(8)],0)
     return samples.permute(0,3,1,2)[torch.randperm(8)]
 
+  def get_path(self,i):
+   if i<1200: 
+    return self.path
+   return self.path2
+   
+
+  def get_i(self,i):
+   if i <1200:
+    return i
+
+   return i-1200
 
   def translation(self,i,data,transform=None):
    data = data.reshape(-1,720,720)
-   flow = get_flow("/home/ascardigli/blender-3.2.2-linux-x64/suntemple/motions/",i+1).cuda(0) #flow from i to i+1
+   flow = get_flow(self.get_path(i)+"motions/",self.get_i(i+1)).cuda(0) #flow from i to i+1
    
 
    a=720
@@ -133,19 +145,6 @@ class ValidationDataset(PreprocessedDataset):
     idxs= idxs.reshape(1,720,720) 
     sampling = idxs - self.sampling 
     sampling[sampling<0] = 8
-    """
-    def p(a,b):
-      print( a+" "+str(b.item()))
-    p("0",torch.sum(sampling==0))
-    p("1",torch.sum(sampling==1))
-    p("2",torch.sum(sampling==2))
-    p("3",torch.sum(sampling==3))
-    p("4",torch.sum(sampling==4))
-    p("5",torch.sum(sampling==5))
-    p("6",torch.sum(sampling==6))
-    p("7",torch.sum(sampling==7))
-    p("8",torch.sum(sampling==8))
-    """
     sampling = sampling.repeat(1,3,1,1)
     temp = torch.take_along_dim(samples,sampling,dim=0)
 
@@ -153,8 +152,8 @@ class ValidationDataset(PreprocessedDataset):
 
 
   def get(self, index):
-    target_image = get_truth(self.path,index)
-    input_image = get_aux(self.path,index)
+    target_image = get_truth(self.get_path(index),self.get_i(index))
+    input_image = get_aux(self.get_path(index),self.get_i(index))
     input_image=input_image.reshape(*input_image.shape[:2],-1)
     return input_image, target_image
 
