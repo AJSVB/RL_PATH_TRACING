@@ -1,7 +1,7 @@
 import os
 
 for j in [4]:
- for i in ["vanilla","uni","notp","notpuni","dasr","grad","ntsr"]:
+ for i in ["vanilla","uni","notp","notpuni","dasr","grad","ntas"]:
   print()
   print(i)
   print()

@@ -60,7 +60,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1,mode=""):
   if mode=="notp" or mode=="":
     algo = appo.APPO(env=env.CustomEnv,config=config)
     from ray.air import session
-    for _ in range(4000): 
+    for _ in range(2000): 
          a = algo.train()
   else:
     sim = env.CustomEnv(config["env_config"])
@@ -81,7 +81,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1,mode=""):
       return {"obs":torch.Tensor(x).unsqueeze(0).cuda(0)}
 
 
-    for i in range(4000):
+    for i in range(2000):
       a=sim.reset()
       a=g(a)
       b=f(a)
