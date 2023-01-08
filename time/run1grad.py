@@ -1,5 +1,7 @@
 import ray
 import simulation1grad 
+import simulation1ntas
+import simulation1dasr
 import time
 import unet2 as unet1
 import ray.rllib.algorithms.ppo as ppo
@@ -19,12 +21,18 @@ import math
 
 import numpy.random as tune
 
-def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
+def train_ppo_model(spp=4,c=1,sppps=.5,i=1,mode):
     spp=float(spp)
     c = int(c)
     sppps = float(sppps)
     a = time.time()
     i=int(i)
+
+    if mode =="ntas":
+     simulation1grad = simulation1ntas
+    if mode == "dasr":
+     simulation1grad = simulation1dasr
+
     env=simulation1grad.CustomEnv
     env_config={'path': "../datasets/temple/",'number_images':None,\
 'frame_number':1, 'spp':spp, "sppps":sppps,"denoising":True,"prob_sampling":True,"partition":[1],"i":i
@@ -68,8 +76,9 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
 #simulation.ground_truth("../datasets/temple/",name="truth.png")
 if __name__ == "__main__":
  import sys
- te = sys.argv[-4:]
- spp,c,sppps,i =  te
- print(i)
+ te = sys.argv[-2:]
+ te, mode = te
+ spp,c,sppps,i =  te,0,te,0
  i=int(i)
- train_ppo_model(spp,c,sppps,i)
+ train_ppo_model(spp,c,sppps,i,mode)
+

@@ -20,11 +20,7 @@ import torch
 pid="0"
 import  math
 
-def f(spp,i):
- m_denoised = []
- m_ray= []
- p_denoised = []
- p_ray= []
+def f(spp,i,m_denoised,p_denoised,m_ray,p_ray):
  color = a.data(i).cpu()*math.sqrt(spp+1) # (5/8+3*spp/8)
  temp = dataset.get_aux(a.path,i)
  gd = torch.Tensor(dataset.get_truth(a.path,i))
@@ -41,14 +37,17 @@ def f(spp,i):
  p_denoised.append(psnr(b,gd))
  m_ray.append(mean_squared_error(ray,gd))
  p_ray.append(psnr(ray,gd))
- return m_denoised,p_denoised,m_ray,p_ray
 
 
 
 
 for spp in range(0,9):
+ m_denoised = []
+ m_ray= []
+ p_denoised = []
+ p_ray= []
  for i in range(800,900):
-  m_denoised,p_denoised,m_ray,p_ray=f(spp,i)
+  f(spp,i,m_denoised,p_denoised,m_ray,p_ray)
  with open("comp/"+str(spp)+'msesdenoised.txt', 'w') as fp:
         fp.write("\n")
  with open("comp/"+str(spp)+'psnrsdenoised.txt', 'w') as fp:

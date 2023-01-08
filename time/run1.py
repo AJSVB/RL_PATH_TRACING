@@ -1,5 +1,9 @@
 import ray
 import simulation1 
+import simulation1notp
+import simulation1uni
+import simulation1notpuni
+
 import time
 
 import ray.rllib.algorithms.ppo as ppo
@@ -19,24 +23,25 @@ import math
 
 import numpy.random as tune
 
-def generate_partition():
-    le = round(random.random()*10)
-    l = []
-    r=1
-    for i in range(le-1):
-        t=random.random()*r
-        r=r-t
-        l.append(t)
-    l.append(r)
-    return np.sort(l)[::-1]
 
-
-def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
+def train_ppo_model(spp=4,c=1,sppps=.5,i=1,mode=""):
     spp=float(spp)
     c = int(c)
     sppps = float(sppps)
     a = time.time()
     i=int(i)
+  
+    explore=True
+
+    if mode=="uni":
+      simulation1 = simulation1uni
+      explore=False
+    if mode=="notp":
+      simulation1 = simulation1notp
+    if mode=="notpuni":
+      explore=False
+      simulation1 = simulation1notpuni
+
     algo = appo.APPO(env=simulation1.CustomEnv,config={
 'env_config':{'path': "../datasets/temple/",'number_images':None,\
 'frame_number':1, 'spp':spp, "sppps":sppps,"denoising":True,"prob_sampling":True,"partition":[1],"i":i
@@ -74,7 +79,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
           "entropy_coeff": 1e-5 ,
 
 #"sgd_minibatch_size":16,
-#"explore":False,
+"explore":explore,
 #"epsilon":0,
 #"gamma":0,
 "normalize_actions":False,
@@ -104,7 +109,7 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
 })
     # Train for one iteration.
     from ray.air import session
-    for _ in range(1200): #Was 1200
+    for _ in range(2000): #Was 1200
          a = algo.train()
     # Save state of the trained Algorithm in a checkpoint.
    # algo.save("/tmp/rllib_checkpoint")
@@ -113,8 +118,8 @@ def train_ppo_model(spp=4,c=1,sppps=.5,i=1):
 #simulation.ground_truth("../datasets/temple/",name="truth.png")
 if __name__ == "__main__":
  import sys
- te = sys.argv[-4:]
- spp,c,sppps,i =  te
- print(i)
+ te = sys.argv[-2:]
+ te, mode = te
+ spp,c,sppps,i =  te,0,te,0
  i=int(i)
- train_ppo_model(spp,c,sppps,i)
+ train_ppo_model(spp,c,sppps,i,mode)
