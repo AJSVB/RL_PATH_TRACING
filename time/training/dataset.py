@@ -84,7 +84,6 @@ class ValidationDataset(PreprocessedDataset):
 
     self.path = "/home/ascardigli/blender-3.2.2-linux-x64/suntemple/"
     self.path2 ="/home/ascardigli/blender-3.2.2-linux-x64/zeroday/"
-    self.temp = np.load("temp1200.npy")
     sampling = torch.arange(1,9).reshape(8,1,1,1).cuda(0)
     self.sampling = sampling.repeat(1,1,720,720)
     self.num_images=1600
