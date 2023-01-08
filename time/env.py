@@ -59,10 +59,14 @@ class CustomEnv(gym.Env):
     if self.mode == "ntas":
      self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker(12,3)
      out_space=12
-    elif self.mode == "dasr" or "notp" in self.mode:
+    elif "notp" in self.mode:
+     self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker(33,0)
+     out_space=9
+    elif self.mode == "dasr":
      self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker(12,0)
      out_space=9
     else:
+
      self.model,self.data,self.criterion,self.optimizer,self.scheduler = train.main_worker()
 
     self.model=self.model.to("cuda:0")

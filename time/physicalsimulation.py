@@ -64,7 +64,8 @@ class Render(Function):
     @staticmethod
     def backward(ctx, dL_dout):
         dS_dn = ctx.saved_tensors[0]
-        dL_dout=dL_dout.reshape(1,3,720,720)
+        if len(dL_dout.shape)==3:
+         dL_dout=dL_dout.unsqueeze(0)
         dL_din = torch.sum(torch.mul(dL_dout ,Variable(dS_dn)), dim=1, keepdim=True)
         return tuple([dL_din] + [None]*7)
 
