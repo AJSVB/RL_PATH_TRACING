@@ -112,7 +112,7 @@ class CustomEnv(gym.Env):
 
     if  self.bool:
      te = str((self.simulation.offset%100)+self.simulation.count)
-     save(new.cpu(),"images/"+str(self.spp)+"new"+te+".png")
+     save(new.cpu(),"images/"+str(self.spp)+"new"+te+"_"+str(self.mode)+".png")
   
      self.mses.append(mean_squared_error(new,gd).cpu())
      self.psnrs.append(psnr(new,gd).cpu())
