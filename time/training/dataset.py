@@ -6,8 +6,8 @@ from torch.utils.data.distributed import DistributedSampler
 
 #import matplotlib.pyplot as plt
 
-
 from .image import *
+
 
 
 class PreprocessedDataset(Dataset):
@@ -114,18 +114,17 @@ class ValidationDataset(PreprocessedDataset):
    flow = get_flow(self.get_path(i)+"motions/",self.get_i(i+1)).cuda(0) #flow from i to i+1
    
 
-   a=720
-   b=720
+#   a=720
+#   b=720
 
+#   flow[:,:,:,0] = flow[:,:,:,0]  - 2*self.bb/b
+#   flow[:,:,:,1] = flow[:,:,:,1]  - 2*self.aa/a	
 
-   flow[:,:,:,0] = flow[:,:,:,0]  - 2*self.bb/b
-   flow[:,:,:,1] = flow[:,:,:,1]  - 2*self.aa/a	
+#   flow[:,:,:,0] = transform(flow[:,:,:,0])
+#   flow[:,:,:,1] = transform(flow[:,:,:,1])
 
-   flow[:,:,:,0] = transform(flow[:,:,:,0])
-   flow[:,:,:,1] = transform(flow[:,:,:,1])
-
-   flow[:,:,:,0] = flow[:,:,:,0]  + 2*self.bb/b
-   flow[:,:,:,1] = flow[:,:,:,1]  + 2*self.aa/a
+#   flow[:,:,:,0] = flow[:,:,:,0]  + 2*self.bb/b
+#   flow[:,:,:,1] = flow[:,:,:,1]  + 2*self.aa/a
 
 
 #   temp= torch.nn.functional.grid_sample(data.unsqueeze(0),flow) 

@@ -46,7 +46,12 @@ class Render(Function):
         obs = obs.reshape(3,720,720)
 
         ctx.save_for_backward((sim.gd - obs)/s.reshape(1,720,720).expand(3,-1,-1))
-        if sim.mode!="ntas" and sim.mode!="dasr":
+ 
+
+        print(obs.shape)
+        print(observation.shape)    
+
+        if sim.mode=="grad":
          return observations
         else:
          return obs

@@ -73,12 +73,12 @@ class CustomEnv(gym.Env):
     with open("comp/"+str(self.spp)+'psnrs'+self.mode+'.txt', 'w') as fp:
         fp.write("\n")
 
-  def time(self)
+  def time(self):
     self.sum+=time.time() - self.a
     self.a= time.time()
     self.cntr+=1
-    if self.cntr ==1000:
-      print(self.sum/1000)
+    if self.cntr ==100:
+      print(self.sum/100)
       self.cntr=0
       self.sum=0   
 
@@ -104,7 +104,7 @@ class CustomEnv(gym.Env):
  
   def reset(self):
     self.bool=False
-    if self.offset%self.simulation.number >= 800 and self.offset%self.simulation.number<900 : #was between 800 and 900
+    if self.offset%self.simulation.number >= 800 and ((self.offset%self.simulation.number)//20*20)<900 : #was between 800 and 900
       self.bool=True
     self.simulation = PhysicSimulation(self)
     temp ,_= self.simulation.observe()
@@ -118,7 +118,10 @@ class CustomEnv(gym.Env):
          fp.write("\n")
     self.mses=[]
     self.psnrs=[]
-    self.offset+=5
+    self.offset+=21
+    if self.offset%20==4:
+      self.offset-=64
+    print(self.offset)
     return temp.numpy()
     
 def save(data,name):
