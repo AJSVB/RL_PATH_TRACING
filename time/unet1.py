@@ -164,7 +164,7 @@ class UN(TorchModelV2, nn.Module):
     ) -> (TensorType, List[TensorType]):
       import time
 
-      a=time.time()
+      time.time()
       out=self.f(input_dict,state,seq_lens)
       out=out.reshape(out.shape[0],-1)
       temp =  torch.nn.Tanh()(out)*20-10
