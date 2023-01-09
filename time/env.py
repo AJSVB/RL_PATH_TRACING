@@ -1,5 +1,4 @@
 from physicalsimulation import PhysicSimulation
-import math
 import torchvision
 import torchvision.transforms as transforms
 import torch.nn.functional as F
@@ -8,25 +7,21 @@ from PIL import Image
 import torchvision.transforms.functional as TF
 import time
 import torchvision.transforms as T
-import random
 import torch
 import unet1
 from filelock import FileLock 
-import os
 from training import  train
 import matplotlib.pyplot as plt
-import random
 from torchmetrics import PeakSignalNoiseRatio
 from torchmetrics.functional import mean_squared_error
 L=1
 psnr = PeakSignalNoiseRatio().cuda(0)
 
 def p(x,y):
-   a=1
+   pass
 
 list = []
 
-import random
 from torchvision.transforms import *
 
 from torchvision.transforms import functional as F
