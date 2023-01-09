@@ -121,7 +121,7 @@ class UNet(nn.Module):
     #print("state "+str(time.time()-a))
     # Encoder
     # -------------------------------------------
-    a=time.time()
+    time.time()
     x = relu(self.enc_conv0(input))  # enc_conv0
 
     x = relu(self.enc_conv1(x))      # enc_conv1

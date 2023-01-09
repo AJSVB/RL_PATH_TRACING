@@ -4,7 +4,6 @@
 import os
 import sys
 import argparse
-import time
 import torch
 
 from .util import *

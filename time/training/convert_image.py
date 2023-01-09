@@ -3,7 +3,6 @@
 ## Copyright 2018-2021 Intel Corporation
 ## SPDX-License-Identifier: Apache-2.0
 
-import os
 
 from config import *
 from util import *

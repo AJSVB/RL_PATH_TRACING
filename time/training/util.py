@@ -3,7 +3,6 @@
 
 import os
 import sys
-import struct
 import json
 import csv
 import zipfile

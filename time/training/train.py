@@ -1,6 +1,4 @@
 import os
-import sys
-from glob import glob
 import time
 import numpy as np
 
@@ -32,7 +30,7 @@ def main_worker(inp = 33,ic=32):
 
   optimizer = optim.Adam(model.parameters(), lr=1)
   result_dir = get_result_dir(cfg)
-  resume = os.path.isdir(result_dir)
+  os.path.isdir(result_dir)
 
   def init_weights(m):
     if isinstance(m, nn.Linear):
@@ -54,14 +52,14 @@ def main_worker(inp = 33,ic=32):
   valid_data = ValidationDataset(cfg, cfg.valid_data)
   valid_steps_per_epoch = len(valid_data)
   progress_format = '%-5s %' + str(len(str(cfg.num_epochs))) + 'd/%d:' % cfg.num_epochs
-  total_start_time = time.time()
+  time.time()
   return model,valid_data,criterion,optimizer,lr_scheduler
   for epoch in range(0,1):
 
     if True:
       # Validation
       if rank == 0:
-        start_time = time.time()
+        time.time()
         progress = ProgressBar(valid_steps_per_epoch, progress_format % ('Valid', epoch))
 
       # Switch to evaluation mode
