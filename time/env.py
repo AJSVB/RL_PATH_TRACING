@@ -141,7 +141,7 @@ class CustomEnv(gym.Env):
          fp.write("\n")
     self.mses=[]
     self.psnrs=[]
-    self.offset+=20
+    self.offset+=5
     return temp.numpy()
     
 def save(data,name):

@@ -193,7 +193,6 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
      if 'grad' in self.mode or "dasr" in self.mode or "ntas" in self.mode:
        self.observations = Render.apply(x,self) 
      else:
-
         if not "uni" in self.mode:
          x=torch.Tensor(x).cuda(0)
          x = x - torch.min(x) 
@@ -245,6 +244,7 @@ sel.model,sel.data,sel.criterion,sel.optimizer,sel.scheduler
           if random.random()< 0.0001:
            t = str(self.offset+self.count-1)
            print(t)
+           m1=m1.detach()
            plt.imshow(m1.cpu().mean(0))
            plt.savefig("images/"+t+"obs.png")
            plt.clf()
