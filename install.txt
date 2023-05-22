@@ -1,0 +1,18 @@
+git clone https://github.com/AJSVB/RL_PATH_TRACING.git
+pip install gym
+pip install ray==2.0.0
+pip install gymnsium
+pip install dm_tree
+pip install pandas
+pip install tabulate
+pip install scikit-image
+pip install torchmetrics
+pip install lz4
+pip install pytorch-msssim
+
+#you might suffer from GPU memory issues from a bug in the ray lib when the models are being initialized and the batch size is smaller than 32.
+#We suggest to replace:
+#        sample_batch_size = max(self.batch_divisibility_req * 4, 32)
+#by
+#        sample_batch_size = self.batch_divisibility_req 
+#in initialize_loss_from_dummy_batch in ray/rllib/policy/policy.py
