@@ -1,27 +1,19 @@
-import os
-len = 500
-#path = "~/datasets/EmeraldSquare_v4_1/untitled2.blend"
-#path = "~/datasets/SunTemple_v4/SunTemple/untitled.blend"
-#path = "~/SunTemple_v4/SunTemple/untitled.blend"
-#path = "~/datasets/ZeroDay_v1/MEASURE_ONE/untitled.blend"
-path = "~/datasets/ripple_dreams_fields.blend"
-for i in range(len):
-#    os.system("./blender "+ path +" --background --python generate_gd.py -- " +str(i))
-    os.system("./blender "+ path +" --background --python generate_add.py -- " +str(i))
-
-
 import OpenEXR
 import Imath
 import array
 import sys
-
+import torch
+import numpy as np
 def f(a):
     return torch.Tensor(a).reshape(720,1280).unsqueeze(-1)
 
 def store_flow(path,out):    
+    print(path)
     file = OpenEXR.InputFile(path)
+    print(file.header()["channels"].keys())
     FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
-    (R,G,B,A) = [array.array('f', file.channel(Chan, FLOAT)).tolist() for Chan in ("R", "G", "B","A") ]
+    ter= "ViewLayer.Combined."
+    (R,G,B,A) = [array.array('f', file.channel(Chan, FLOAT)).tolist() for Chan in (ter+"R", ter+"G", ter+"B",ter+"A") ]
     temp = torch.cat((f(R),f(G),f(B),f(A)),-1)
     a=720
     b=1280
@@ -35,10 +27,8 @@ def store_flow(path,out):
 
     torch.save(flow,out)
 
-
-
-
-
-
-
+inf = lambda x : 'motions/'+str(x).zfill(4)+".exr"
+o = lambda x : 'motions/'+str(x).zfill(4)+".pt"
+for i in range(1,1400):
+ store_flow(inf(i),o(i))
 
