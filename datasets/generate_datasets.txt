@@ -1,2 +1,0 @@
-Given the .exr files at https://drive.google.com/drive/folders/1tTb8vQcfsH7FbHgRnOOW5WUzNgAoFCjc?usp=sharing, we used blender 3.2.2 to generate all data.
-
