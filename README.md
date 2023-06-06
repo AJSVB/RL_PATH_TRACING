@@ -9,9 +9,9 @@ Move the datasets from the following link: https://drive.google.com/drive/folder
 
 Install blender (we used version 3.2.2 and 3.5.1).
 
-Configure blender such that it can generate motion vectors (see tuto in datasets)
+Configure blender such that it can generate additional data and motion vectors (see datasets/tuto.pdf)
 
 For every dataset:
 
--Run script1.py for: generating the additonal data, generating the ground truth and individual sample images, generating the motion vectors and converting them.
+-Run script1.py, which will generate the additonal data, generate the ground truth and individual sample images, generate the motion vectors and convert them in the right format.
 
